@@ -20,7 +20,7 @@ import Data.STRef()
 -- | Takes a String and returns the Burrows-Wheeler Transform (BWT).
 -- Implemented via a suffix array (please see Data.BWT.Internal).
 --
--- Works with alphanumeric characters (A-Za-z0-9), as well as special characters !@#%^&*()_+<>';:[]{}/\|"-.
+-- Works with alphanumeric characters (A-Za-z0-9), as well as special characters `~?!@#%^&*()_+<>';:[]{}/\|"-.,
 -- Does NOT work with a string containing the '$' character.
 -- 
 -- Appends the '$' character to the input automatically.
