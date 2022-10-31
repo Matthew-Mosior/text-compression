@@ -3,6 +3,21 @@
 {-# LANGUAGE Strict       #-}
 
 
+-- |
+-- Module      :  Data.BWT
+-- Copyright   :  (c) Matthew Mosior 2022
+-- License     :  BSD-style
+-- Maintainer  :  mattm.github@gmail.com
+-- Portability :  portable
+--
+-- = Burrows-Wheeler Transform (BWT)
+-- 
+-- The two functions that most users will utilize are 'toBWT' and 'fromBWT'.
+-- There are auxilary function(s) inside of @"Data.BWT.Internal"@.
+--
+-- @"Data.BWT.Internal"@ also has the function 'createBWTMatrix', which can be useful as well, although not used by either 'toBWT' or 'fromBWT'.
+
+
 module Data.BWT where
 
 import Data.BWT.Internal
@@ -18,12 +33,12 @@ import Data.STRef()
 {-toBWT function(s).-}
 
 -- | Takes a String and returns the Burrows-Wheeler Transform (BWT).
--- Implemented via a suffix array (please see Data.BWT.Internal).
+-- Implemented via a 'SuffixArray'.
 --
 -- Works with alphanumeric characters (A-Za-z0-9), as well as special characters `~?!@#%^&*()_+<>';:[]{}/\|"-.,
--- Does NOT work with a string containing the '$' character.
+-- Does __NOT__ work with an input containing the __$__ character.
 -- 
--- Appends the '$' character to the input automatically.
+-- Appends the __$__ character to the input automatically.
 toBWT :: String -> BWT
 toBWT [] = DS.Empty
 toBWT xs = do
@@ -38,14 +53,11 @@ toBWT xs = do
 
 {-fromBWT function(s).-}
 
--- | Takes a BWT data type (please see Data.BWT.Internal) and inverts it back to the original string.
+-- | Takes a BWT data type (please see @"Data.BWT.Internal"@) and inverts it back to the original string.
 -- 
 -- This function utilizes the state monad (strict) in order
--- to implement the "Magic" Inverse BWT algorithm by backtracking
--- indices starting with the '$' character.
---
--- Please see https://www.youtube.com/watch?v=QwSsppKrCj4 for an in-depth
--- look into this algorithm.
+-- to implement the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) Inverse BWT algorithm by backtracking
+-- indices starting with the __$__ character.
 fromBWT :: BWT -> String
 fromBWT bwt = do
   let originalp = CMST.runST $ magicInverseBWT magicsz

@@ -20,17 +20,13 @@ name:               text-compression
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.0
+version:            0.1.0.2
 
 -- A short (one-line) description of the package.
-synopsis:           A text compression suite including a Burrows-Wheeler Transform (BWT) implementation.
+synopsis:           A text compression suite.
 
 -- A longer description of the package.
-description:       This package contains an efficient implementation of the Burrows-Wheeler Transform (BWT) algorithm.  This implementation utilizes a suffix array to compute the BWT.
-
-                   An efficient implementation ("Magic") of the Inverse BWT algorithm is also included.
-
-                   The two main functions that most users will utilize are toBWT and fromBWT.  There are auxilary function(s) inside of Internal.hs.  Internal.hs also has the function createBWTMatrix, which can be useful as well, although not used by either toBWT or fromBWT.  
+description:        This package contains efficient implementations of the Burrows-Wheeler Transform (BWT) and Inverse BWT algorithms.
 
 -- URL for the project homepage or repository.
 homepage:           https://github.com/Matthew-Mosior/text-compression
@@ -42,7 +38,7 @@ license:            BSD-3-Clause
 license-file:       LICENSE
 
 -- The package author(s).
-author:             Matthew-Mosior
+author:             Matthew Mosior
 
 -- An email address to which users can send suggestions, bug reports, and patches.
 maintainer:         mattm.github@gmail.com
@@ -78,10 +74,10 @@ library
     -- other-extensions:
 
     -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.16.3.0,
-                      containers,
-                      massiv,
-                      mtl
+    build-depends:    base       ^>=4.16.3.0, 
+                      containers >= 0.6.5 && < 0.7,
+                      massiv     >= 1.0.2 && < 1.1,
+                      mtl        >= 2.2.2 && < 2.3 
 
     -- Directories containing source files.
     hs-source-dirs:   src

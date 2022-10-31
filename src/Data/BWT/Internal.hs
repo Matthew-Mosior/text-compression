@@ -5,6 +5,36 @@
 {-# LANGUAGE TypeApplications #-}
 
 
+-- |
+-- Module      :  Data.BWT.Internal
+-- Copyright   :  (c) Matthew Mosior 2022
+-- License     :  BSD-style
+-- Maintainer  :  mattm.github@gmail.com
+-- Portability :  portable
+--
+-- = WARNING
+--
+-- This module is considered __internal__.
+--
+-- The Package Versioning Policy __does not apply__.
+--
+-- The contents of this module may change __in any way whatsoever__
+-- and __without any warning__ between minor versions of this package.
+--
+-- Authors importing this library are expected to track development
+-- closely.
+--
+-- = Description
+--
+-- Various data structures and custom data types to describe the Burrows-Wheeler Transform (BWT)
+-- and the Inverse BWT.
+--
+-- The implementation of the BWT relies upon sequence provided
+-- by the [containers](https://hackage.haskell.org/package/containers).
+--
+-- The internal 'BWTMatrix' data type relies upon the [massiv](https://hackage.haskell.org/package/massiv) package.
+
+
 module Data.BWT.Internal where
 
 import Control.Monad as CM
@@ -23,20 +53,23 @@ import Prelude as P
 {-Base level types.-}
 
 -- | Basic suffix data type.  Used to describe
--- the core data inside of the SuffixArray data type.
+-- the core data inside of the 'SuffixArray' data type.
 data Suffix = Suffix { suffixindex    :: Int
                      , suffixstartpos :: Int
                      , suffix         :: Seq Char
                      }
   deriving (Show,Read,Eq,Ord,Generic)
 
--- | The SuffixArray data type. Uses Data.Sequence internally.
+-- | The SuffixArray data type.
+-- Uses sequence internally.
 type SuffixArray = Seq Suffix
 
--- | The BWT data type. Uses Data.Sequence internally.
+-- | The BWT data type.
+-- Uses sequence internally.
 type BWT         = Seq Char
 
--- | The BWTMatrix data type. Uses Data.Massiv internally.
+-- | The BWTMatrix data type.
+-- Uses a massiv array internally.
 type BWTMatrix   = DMA.Array BN Ix1 String
 
 {-------------------}
@@ -56,7 +89,8 @@ saToBWT (y DS.:<| ys) t =
      -> DS.index t (DS.length t - 1)
         DS.<| (saToBWT ys t)
 
--- | Computes the corresponding suffix array of a given string.
+-- | Computes the corresponding 'SuffixArray' of a given string. Please see [suffix array](https://en.wikipedia.org/wiki/Suffix_array)
+-- for more information. 
 createSuffixArray :: Seq Char -> SuffixArray
 createSuffixArray xs =
   fmap (\x -> Suffix { suffixindex    = ((\(a,_,_) -> a) x)
@@ -83,13 +117,15 @@ createSuffixArray xs =
 
 -- | Hierarchical sorting scheme that compares fst first then snd.
 -- Necessary for the setting up the BWT in order to correctly
--- invert it using the "Magic" algorithm.
+-- invert it using the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) algorithm.
 sortTB :: (Ord a1, Ord a2) => (a1, a2) -> (a1, a2) -> Ordering
 sortTB (c1,i1) (c2,i2) = compare c1 c2 <>
                          compare i1 i2
 
--- | Abstract BWTString and associated state type.
+-- | Abstract BWTSeq type utilizing a sequence.
 type BWTSeq a = Seq Char
+
+-- | Abstract data type representing a BWTSeq in the (strict) ST monad.
 type STBWTSeq s a = STRef s (BWTSeq Char)
 
 -- | State function to push BWTString data into stack.
