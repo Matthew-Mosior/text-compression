@@ -24,6 +24,10 @@
 -- Authors importing this library are expected to track development
 -- closely.
 --
+-- All credit goes to the author(s)/maintainer(s) of the
+-- [containers](https://hackage.haskell.org/package/containers) library
+-- for the above warning text.
+--
 -- = Description
 --
 -- Various data structures and custom data types to describe the Burrows-Wheeler Transform (BWT)
