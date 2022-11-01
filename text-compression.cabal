@@ -20,10 +20,10 @@ name:               text-compression
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.2
+version:            0.1.0.4
 
 -- A short (one-line) description of the package.
-synopsis:           A text compression suite.
+synopsis:           A text compression library.
 
 -- A longer description of the package.
 description:        This package contains efficient implementations of the Burrows-Wheeler Transform (BWT) and Inverse BWT algorithms.
