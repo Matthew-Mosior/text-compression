@@ -34,19 +34,16 @@ import Data.STRef()
 
 -- | Takes a String and returns the Burrows-Wheeler Transform (BWT).
 -- Implemented via a 'SuffixArray'.
---
--- Works with alphanumeric characters (A-Za-z0-9), as well as special characters `~?!@#%^&*()_+<>';:[]{}/\|"-.,
--- Does __NOT__ work with an input containing the __$__ character.
--- 
--- Appends the __$__ character to the input automatically.
-toBWT :: String -> BWT
+toBWT :: Ord a =>
+         [a]   ->
+         BWT a
 toBWT [] = DS.Empty
 toBWT xs = do
-  let saxs = createSuffixArray xseos
+  let saxs = createSuffixArray xss
   saToBWT saxs
-          xseos
+          xss
     where
-      xseos = (DS.fromList xs) DS.|> '$'
+      xss = DS.fromList xs
 
 {--------------------}
 
@@ -57,12 +54,13 @@ toBWT xs = do
 -- 
 -- This function utilizes the state monad (strict) in order
 -- to implement the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) Inverse BWT algorithm by backtracking
--- indices starting with the __$__ character.
-fromBWT :: BWT -> String
+-- indices starting with the (__Nothing__,_) entry.
+fromBWT :: Ord a =>
+           BWT a ->
+           [a]
 fromBWT bwt = do
-  let originalp = CMST.runST $ magicInverseBWT magicsz
-  DFold.toList $ DS.take ((DS.length originalp) - 1)
-                         originalp
+  let originall = CMST.runST $ magicInverseBWT magicsz
+  DFold.toList originall
     where
       magicsz = DS.sortBy (\(a,b) (c,d) -> sortTB (a,b) (c,d))
                 zipped

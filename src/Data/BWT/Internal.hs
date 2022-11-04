@@ -46,6 +46,7 @@ import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.Foldable as DFold
 import Data.List as DL
+import Data.Maybe as DMaybe (fromJust,isNothing)
 import Data.Sequence as DS
 import Data.Massiv.Array as DMA
 import Data.Massiv.Core()
@@ -58,23 +59,23 @@ import Prelude as P
 
 -- | Basic suffix data type.  Used to describe
 -- the core data inside of the 'SuffixArray' data type.
-data Suffix = Suffix { suffixindex    :: Int
-                     , suffixstartpos :: Int
-                     , suffix         :: Seq Char
-                     }
+data Suffix a = Suffix { suffixindex    :: Int
+                       , suffixstartpos :: Int
+                       , suffix         :: Maybe (Seq a)
+                       }
   deriving (Show,Read,Eq,Ord,Generic)
 
 -- | The SuffixArray data type.
 -- Uses sequence internally.
-type SuffixArray = Seq Suffix
+type SuffixArray a = Seq (Suffix a)
 
 -- | The BWT data type.
 -- Uses sequence internally.
-type BWT         = Seq Char
+type BWT a         = Seq (Maybe a)
 
 -- | The BWTMatrix data type.
 -- Uses a massiv array internally.
-type BWTMatrix   = DMA.Array BN Ix1 String
+type BWTMatrix = DMA.Array BN Ix1 String
 
 {-------------------}
 
@@ -83,32 +84,41 @@ type BWTMatrix   = DMA.Array BN Ix1 String
 
 -- | Computes the Burrows-Wheeler Transform (BWT) using the suffix array
 -- and the original string (represented as a sequence for performance).
-saToBWT :: SuffixArray -> Seq Char -> BWT
-saToBWT DS.Empty _ = DS.Empty
+saToBWT :: SuffixArray a ->
+           Seq a         ->
+           BWT a
+saToBWT DS.Empty      _ = DS.Empty
 saToBWT (y DS.:<| ys) t =
   if | suffixstartpos y /= 1
-     -> DS.index t (suffixstartpos y - 1 - 1)
-        DS.<| (saToBWT ys t)
+     -> (Just $ DS.index t (suffixstartpos y - 1 - 1))
+        DS.<| (saToBWT ys t)  
      | otherwise
-     -> DS.index t (DS.length t - 1)
+     -> Nothing
         DS.<| (saToBWT ys t)
 
 -- | Computes the corresponding 'SuffixArray' of a given string. Please see [suffix array](https://en.wikipedia.org/wiki/Suffix_array)
 -- for more information. 
-createSuffixArray :: Seq Char -> SuffixArray
+createSuffixArray :: Ord a =>
+                     Seq a ->
+                     SuffixArray a
 createSuffixArray xs =
-  fmap (\x -> Suffix { suffixindex    = ((\(a,_,_) -> a) x)
-                     , suffixstartpos = ((\(_,b,_) -> b) x)
-                     , suffix         = ((\(_,_,c) -> c) x)
-                     }
-       ) xsssuffixesfff
+  fmap (\(a,b,c) -> if | not $ DS.null c
+                       -> Suffix { suffixindex    = a
+                                 , suffixstartpos = b
+                                 , suffix         = Just c
+                                 }
+                       | otherwise
+                       -> Suffix { suffixindex    = a
+                                 , suffixstartpos = b
+                                 , suffix         = Nothing
+                                 }
+       )
+  xsssuffixesfff
     where
       xsssuffixes         = DS.tails xs
       xsssuffixesf        = DS.zip (DS.fromList [1..(DS.length xsssuffixes)])
                                    xsssuffixes
-      xsssuffixesff       = DS.filter (\(_,b) -> not $ DS.null b)
-                                      xsssuffixesf
-      xsssuffixesffsorted = DS.sortOn snd xsssuffixesff
+      xsssuffixesffsorted = DS.sortOn snd xsssuffixesf
       xsssuffixesfff      = (\(a,(b,c)) -> (a,b,c))
                             <$>
                             DS.zip (DS.fromList [1..(DS.length xsssuffixesffsorted)])
@@ -127,19 +137,19 @@ sortTB (c1,i1) (c2,i2) = compare c1 c2 <>
                          compare i1 i2
 
 -- | Abstract BWTSeq type utilizing a sequence.
-type BWTSeq a = Seq Char
+type BWTSeq a = Seq a
 
 -- | Abstract data type representing a BWTSeq in the (strict) ST monad.
-type STBWTSeq s a = STRef s (BWTSeq Char)
+type STBWTSeq s a = STRef s (BWTSeq a)
 
 -- | State function to push BWTString data into stack.
-pushSTBWTSeq :: STBWTSeq s Char -> Char -> ST s ()
+pushSTBWTSeq :: STBWTSeq s a -> a -> ST s ()
 pushSTBWTSeq s e = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> e)
 
 -- | State function to create empty STBWTString type.
-emptySTBWTSeq :: ST s (STBWTSeq s Char)
+emptySTBWTSeq :: ST s (STBWTSeq s a)
 emptySTBWTSeq = newSTRef DS.empty
 
 -- | Abstract BWTCounter and associated state type.
@@ -154,74 +164,84 @@ emptySTBWTCounter :: ST s (STBWTCounter s Int)
 emptySTBWTCounter = newSTRef (-1)
 
 -- | "Magic" Inverse BWT function.
-magicInverseBWT :: Seq (Char,Int) -> ST s (BWTSeq Char)
+magicInverseBWT :: Seq (Maybe a,Int) ->
+                   ST s (BWTSeq a)
 magicInverseBWT DS.Empty = do
-  bwtseqstackempty <- emptySTBWTSeq
+  bwtseqstackempty  <- emptySTBWTSeq
   bwtseqstackemptyr <- readSTRef bwtseqstackempty
   return bwtseqstackemptyr
 magicInverseBWT xs       = do
-  bwtseqstack <- emptySTBWTSeq
-  bwtcounterstack <- emptySTBWTCounter
-  case (DS.findIndexL ((== '$') . fst) xs) of
-    Nothing              -> do bwtseqstackr <- readSTRef bwtseqstack
-                               return bwtseqstackr
-    Just dollarsignindex -> do let dollarsignfirst = DS.index xs
-                                                              dollarsignindex
-                               updateSTBWTCounter bwtcounterstack
-                                                  (snd dollarsignfirst)
-                               iBWT xs
-                                    bwtseqstack
-                                    bwtcounterstack
-                               bwtseqstackr <- readSTRef bwtseqstack
-                               return bwtseqstackr
+  bwtseqstack      <- emptySTBWTSeq
+  bwtcounterstackf <- emptySTBWTCounter
+  bwtcounterstacke <- emptySTBWTCounter
+  case (DS.findIndexL (\x -> isNothing $ fst x) xs) of
+    Nothing           -> do bwtseqstackr <- readSTRef bwtseqstack
+                            return bwtseqstackr
+    Just nothingindex -> do let nothingfirst = DS.index xs
+                                                        nothingindex
+                            updateSTBWTCounter bwtcounterstacke
+                                               nothingindex
+                            updateSTBWTCounter bwtcounterstackf
+                                               (snd nothingfirst)
+                            iBWT xs
+                                 bwtseqstack
+                                 bwtcounterstackf
+                                 bwtcounterstacke
+                            bwtseqstackr <- readSTRef bwtseqstack
+                            return bwtseqstackr
       where
-        iBWT ys bwtss bwtcs = do
-          cbwtcs <- readSTRef bwtcs
-          cbwtss <- readSTRef bwtss
-          CM.when (DS.length cbwtss < DS.length ys) $ do
-            let next = DS.index ys cbwtcs
+        iBWT ys bwtss bwtcsf bwtcse = do
+          cbwtcsf <- readSTRef bwtcsf
+          cbwtcse <- readSTRef bwtcse
+          CM.when (cbwtcsf /= cbwtcse) $ do 
+            let next = DS.index ys cbwtcsf
             pushSTBWTSeq bwtss
-                         (fst next)
-            updateSTBWTCounter bwtcs
+                         (DMaybe.fromJust $ fst next)
+            updateSTBWTCounter bwtcsf
                                (snd next)
-            iBWT ys bwtss bwtcs
-
--- | Easy way to grab the first two elements of a sequence.
-grabHeadChunks :: Seq (Seq Char) -> (Seq Char,Seq Char)
-grabHeadChunks DS.Empty       = (DS.Empty,DS.Empty)
-grabHeadChunks (x1 DS.:<| xs) = (x1,grabHeadChunksInternal xs)
-    where
-      grabHeadChunksInternal :: Seq (Seq Char) -> Seq Char
-      grabHeadChunksInternal DS.Empty       = DS.Empty
-      grabHeadChunksInternal (y1 DS.:<| _) = y1
+            iBWT ys
+                 bwtss
+                 bwtcsf
+                 bwtcse
 
 -- | Simple yet efficient implementation of converting a given string
 -- into a BWT Matrix (the BWTMatrix type is a massiv array).
-createBWTMatrix :: String -> BWTMatrix
+createBWTMatrix :: String ->
+                   BWTMatrix
 createBWTMatrix t =
-  DMA.fromList (ParN 0) zippedfff :: Array BN Ix1 String   
+  DMA.fromList (ParN 0) zippedffff :: Array BN Ix1 String
     where
-      zippedfff = DL.map DFold.toList          $
-                  DL.map (\(a,b) -> a DS.>< b) $
-                  DFold.toList zippedff
-      zippedff  = DS.sortBy (\(a,_) (c,_) -> compare a c)
-                  zippedf
-      zippedf   = zippedh
-                  DS.><
-                  zippedp
-      zippedh   = DS.singleton   $
-                  grabHeadChunks $
-                  DS.chunksOf ((DS.length tseq) - 1)
-                              tseq
-      zippedp   = DS.zip suffixesf prefixesf
-      prefixesf = DS.take ((DS.length prefixes) - 1)
-                          prefixes
-      suffixesf = DS.drop 1
-                          suffixes
-      suffixes = DS.filter (not . DS.null)
-                 (DS.tails tseq)
-      prefixes = DS.filter (not . DS.null)
-                 (DS.inits tseq)
-      tseq = (DS.fromList t) DS.|> '$'
+      zippedffff = DL.map DFold.toList $
+                   DL.map (\(a,b) -> if | isNothing a
+                                        -> DS.singleton '$' DS.><
+                                           fromJust b
+                                        | isNothing b
+                                        -> fromJust a DS.><
+                                           DS.singleton '$'
+                                        | otherwise
+                                        -> fromJust a       DS.><
+                                           DS.singleton '$' DS.><
+                                           fromJust b
+                          )
+                   zippedfff
+      zippedfff  = DFold.toList zippedff
+      zippedff   = DS.sortBy (\(a,_) (c,_) -> compare a c)
+                   zippedp
+      zippedp    = DS.zip suffixesf prefixesf
+      suffixesf  = fmap (\x -> if | DS.null x
+                                  -> Nothing
+                                  | otherwise
+                                  -> Just x
+                        )
+                   suffixes
+      prefixesf  = fmap (\x -> if | DS.null x
+                                  -> Nothing
+                                  | otherwise
+                                  -> Just x
+                        )
+                   prefixes
+      suffixes   = DS.tails tseq
+      prefixes   = DS.inits tseq
+      tseq       = DS.fromList t
 
 {--------------------}
