@@ -132,7 +132,10 @@ createSuffixArray xs =
 -- | Hierarchical sorting scheme that compares fst first then snd.
 -- Necessary for the setting up the BWT in order to correctly
 -- invert it using the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) algorithm.
-sortTB :: (Ord a1, Ord a2) => (a1, a2) -> (a1, a2) -> Ordering
+sortTB :: (Ord a1, Ord a2) =>
+          (a1, a2)         ->
+          (a1, a2)         ->
+          Ordering
 sortTB (c1,i1) (c2,i2) = compare c1 c2 <>
                          compare i1 i2
 

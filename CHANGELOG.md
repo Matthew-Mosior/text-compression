@@ -24,3 +24,8 @@
 
 * First version.
 * Removed requirement for avoiding input with the '$' character in both the toBWT and fromBWT functions (both toBWT and fromBWT functions are now polymorphic).
+
+## 0.1.0.6 -- 2022-11-05
+
+* First version.
+* Added helper functions to ease conversion of ByteStrings and Text to and from the BWT type.
