@@ -1,6 +1,7 @@
-{-# LANGUAGE MultiWayIf   #-}
-{-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE Strict       #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE MultiWayIf    #-}
+{-# LANGUAGE ViewPatterns  #-}
+{-# LANGUAGE Strict        #-}
 
 
 -- |
@@ -15,7 +16,7 @@
 -- The two functions that most users will utilize are 'toBWT' and 'fromBWT'.
 -- There are auxilary function(s) inside of @"Data.BWT.Internal"@.
 --
--- The helper functions for ByteString, 'bytestringToBWT' and 'bytestringFromBWT' and Text, 'textToBWT' and 'textFromBWT' should help for common use cases.
+-- The helper functions for ByteString, 'bytestringToBWT', 'bytestringFromWord8BWT' , 'bytestringFromByteStringBWT' and Text, 'textToBWT' and 'textFromBWT' should help for common use cases.
 --
 -- @"Data.BWT.Internal"@ also has the function 'createBWTMatrix', which can be useful as well, although not used by either 'toBWT' or 'fromBWT'.
 
@@ -27,13 +28,14 @@ import Data.BWT.Internal
 import Control.Monad()
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
-import Data.ByteString as BS (ByteString,pack,unpack)
+import Data.ByteString as BS (ByteString,concat,pack,unpack)
 import Data.Foldable as DFold (toList)
 import Data.Sequence as DS
 import Data.STRef()
 import Data.Text (Text)
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
+import GHC.Generics(Generic)
 
 
 {-toBWT Function(s)-}
@@ -57,9 +59,10 @@ bytestringToBWT :: ByteString ->
                    BWT Word8
 bytestringToBWT = toBWT . BS.unpack
 
--- newtype to ensure you only uncompress a BWT created
--- from textToBWT, since [Word8] -> Text is partial
+-- | A newtype to ensure you only uncompress a BWT created
+-- from textToBWT, since [Word8] -> Text is partial.
 newtype TextBWT = TextBWT (BWT Word8)
+  deriving (Eq,Ord,Show,Read,Generic)
 
 -- | Helper function for converting 'Text'
 -- to a 'TextBWT'.
@@ -89,16 +92,22 @@ fromBWT bwt = do
       zipped  = DS.zip bwt
                        (DS.iterateN (DS.length bwt) (+1) 0)
 
--- | Helper function for converting a 'BWT' 'Word8'
+-- | Helper function for converting a 'BWT' of 'Word8's
 -- to a 'ByteString'.
-bytestringFromBWT :: BWT Word8 ->
-                     ByteString
-bytestringFromBWT = BS.pack . fromBWT
+bytestringFromWord8BWT :: BWT Word8
+                       -> ByteString
+bytestringFromWord8BWT = BS.pack . fromBWT
+
+-- | Helper function for converting a 'BWT' 'ByteString's
+-- to a 'ByteString'.
+bytestringFromByteStringBWT :: BWT ByteString
+                            -> ByteString
+bytestringFromByteStringBWT = BS.concat . fromBWT
 
 -- | Helper function for converting 'TextBWT'
 -- to a 'Text'
 textFromBWT :: TextBWT -> Text
 textFromBWT (TextBWT x) = DTE.decodeUtf8 $
-                          bytestringFromBWT x
+                          bytestringFromWord8BWT x
 
 {---------------------}
