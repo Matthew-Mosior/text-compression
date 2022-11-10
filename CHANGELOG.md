@@ -6,26 +6,28 @@
 
 ## 0.1.0.1 -- 2022-10-31
 
-* First version, with some updated documentation.
+* Updated documentation.
 
 ## 0.1.0.2 -- 2022-10-31
 
-* First version, with some updated documentation.
+* Updated documentation.
 
 ## 0.1.0.3 -- 2022-10-31
 
-* First version, with some updated documentation.
+* Updated documentation.
 
 ## 0.1.0.4 -- 2022-10-31
 
-* First version, with some updated documentation.
+* Updated documentation.
 
 ## 0.1.0.5 -- 2022-11-01
 
-* First version.
 * Removed requirement for avoiding input with the '$' character in both the toBWT and fromBWT functions (both toBWT and fromBWT functions are now polymorphic).
 
 ## 0.1.0.6 -- 2022-11-05
 
-* First version.
 * Added helper functions to ease conversion of ByteStrings and Text to and from the BWT type.
+
+## 0.1.0.7 -- 2022-11-07
+
+* Added Run-length encoding (RLE) implementation.
