@@ -31,9 +31,9 @@
 -- = Description
 --
 -- Various data structures and custom data types to describe the Run-length encoding (RLE)
--- and the Inverse RLE implementations, namely 'seqToRLEB', 'seqToRLET', 'seqFromRLEB', and 'seqFromRLET'.
+-- and the Inverse RLE implementations, namely 'vecToRLEB', 'vecToRLET', 'vecFromRLEB', and 'vecFromRLET'.
 --
--- The RLE implementations rely heavily upon 'Seq' provided by the [containers](https://hackage.haskell.org/package/containers),
+-- The RLE implementations rely heavily upon 'DVB.Vector' provided by the [vector](https://hackage.haskell.org/package/vector) library,
 -- 'STRef' and associated functions in the [stref](https://hackage.haskell.org/package/base-4.17.0.0/docs/Data-STRef.html) library,
 -- and 'runST' in the [Control.Monad.ST](https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html) library.
 
@@ -48,10 +48,10 @@ import Data.ByteString.Char8 as BSC8 (pack,unpack)
 import Data.ByteString.Internal()
 import Data.List()
 import Data.Maybe as DMaybe (fromJust,isJust,isNothing)
-import Data.Sequence as DS
-import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
 import Data.Text as DText
+import Data.Vector as DVB
+import Data.Vector.Unboxed()
 import GHC.Generics (Generic)
 import Prelude as P
 
@@ -59,11 +59,11 @@ import Prelude as P
 {-Base level types.-}
 
 -- | Basic RLE ('ByteString') data type.
-newtype RLEB = RLEB (Seq (Maybe ByteString))
+newtype RLEB = RLEB (DVB.Vector (Maybe ByteString))
   deriving (Eq,Ord,Show,Read,Generic)
 
 -- | Basic RLE ('Text') data type.
-newtype RLET = RLET (Seq (Maybe Text))
+newtype RLET = RLET (DVB.Vector (Maybe Text))
   deriving (Eq,Ord,Show,Read,Generic)
 
 {-------------------}
@@ -71,24 +71,24 @@ newtype RLET = RLET (Seq (Maybe Text))
 
 {-toRLE (ByteString) functions.-}
 
--- | Abstract 'RLESeqB' type utilizing a sequence.
-type RLESeqB = Seq (Maybe ByteString)
+-- | Abstract 'RLEVecB' type utilizing a sequence.
+type RLEVecB = DVB.Vector (Maybe ByteString)
 
--- | Abstract data type representing a 'RLESeqB' in the (strict) ST monad.
-type STRLESeqB s a = STRef s RLESeqB
+-- | Abstract data type representing a 'RLEVecB' in the (strict) ST monad.
+type STRLEVecB s a = STRef s RLEVecB
 
--- | State function to push 'RLESeqB' data into stack.
-pushSTRLESeqB :: STRLESeqB s (Maybe ByteString) -> Maybe ByteString -> ST s ()
-pushSTRLESeqB s Nothing  = do
+-- | State function to push 'RLEVecB' data into stack.
+pushSTRLEVecB :: STRLEVecB s (Maybe ByteString) -> Maybe ByteString -> ST s ()
+pushSTRLEVecB s Nothing  = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-pushSTRLESeqB s (Just e) = do
+  writeSTRef s (DVB.snoc s2 Nothing)
+pushSTRLEVecB s (Just e) = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Just e)
+  writeSTRef s (DVB.snoc s2 (Just e))
 
--- | State function to create empty 'STRLESeqB' type.
-emptySTRLESeqB :: ST s (STRLESeqB s a)
-emptySTRLESeqB = newSTRef DS.empty
+-- | State function to create empty 'STRLEVecB' type.
+emptySTRLEVecB :: ST s (STRLEVecB s a)
+emptySTRLEVecB = newSTRef DVB.empty
 
 -- | Abstract 'STRLETempB' and associated state type.
 type STRLETempB s a = STRef s (Maybe ByteString)
@@ -114,52 +114,52 @@ emptySTRLECounterB :: ST s (STRLECounterB s Int)
 emptySTRLECounterB = newSTRef (-1)
 
 -- | Strict state monad function.
-seqToRLEB :: RLESeqB
-          -> ST s RLESeqB
-seqToRLEB DS.Empty      = do
-  brleseqstackempty  <- emptySTRLESeqB
-  brleseqstackemptyr <- readSTRef brleseqstackempty
-  return brleseqstackemptyr
-seqToRLEB (x DS.:<| xs) = do
-  brleseqstack     <- emptySTRLESeqB
+vecToRLEB :: RLEVecB
+          -> ST s RLEVecB
+vecToRLEB (DVB.uncons -> Nothing)     = do
+  brlevecstackempty  <- emptySTRLEVecB
+  brlevecstackemptyr <- readSTRef brlevecstackempty
+  return brlevecstackemptyr
+vecToRLEB (DVB.uncons -> Just (v,vs)) = do
+  brlevecstack     <- emptySTRLEVecB
   brlecounterstack <- emptySTRLECounterB
   brletempstack    <- emptySTRLETempB
   updateSTRLECounterB brlecounterstack
                       1 
   updateSTRLETempB brletempstack
-                   x
-  iRLEB xs
-        brleseqstack
+                   v
+  iRLEB vs
+        brlevecstack
         brlecounterstack
         brletempstack
-  brleseqstackr <- readSTRef brleseqstack
-  return brleseqstackr
+  brlevecstackr <- readSTRef brlevecstack
+  return brlevecstackr
     where
-      iRLEB DS.Empty      brless brlecs brlets = do
+      iRLEB (DVB.uncons -> Nothing)     brless brlecs brlets = do
         cbrlecs <- readSTRef brlecs
         cbrlets <- readSTRef brlets
-        pushSTRLESeqB brless
+        pushSTRLEVecB brless
                       (Just      $
                        BSC8.pack $
                        show cbrlecs)
-        pushSTRLESeqB brless
+        pushSTRLEVecB brless
                       cbrlets
         pure ()
-      iRLEB (y DS.:<| ys) brless brlecs brlets = do
+      iRLEB (DVB.uncons -> Just (y,ys)) brless brlecs brlets = do
         cbrlecs <- readSTRef brlecs
         cbrlets <- readSTRef brlets
         if | isNothing y
-           -> do pushSTRLESeqB brless
+           -> do pushSTRLEVecB brless
                                (Just      $
                                 BSC8.pack $
                                 show cbrlecs)
-                 pushSTRLESeqB brless
+                 pushSTRLEVecB brless
                                cbrlets 
-                 pushSTRLESeqB brless
+                 pushSTRLEVecB brless
                                (Just      $
                                 BSC8.pack $
                                 show (1 :: Int))
-                 pushSTRLESeqB brless
+                 pushSTRLEVecB brless
                                Nothing
                  updateSTRLETempB brlets
                                   Nothing             
@@ -184,11 +184,11 @@ seqToRLEB (x DS.:<| xs) = do
                        brlecs
                        brlets
            | otherwise
-           -> do pushSTRLESeqB brless
+           -> do pushSTRLEVecB brless
                                (Just      $
                                 BSC8.pack $
                                 show cbrlecs)
-                 pushSTRLESeqB brless
+                 pushSTRLEVecB brless
                                cbrlets
                  updateSTRLECounterB brlecs
                                      1
@@ -204,24 +204,24 @@ seqToRLEB (x DS.:<| xs) = do
 
 {-toRLE (Text) functions.-}
 
--- | Abstract 'RLESeqT' type utilizing a sequence.
-type RLESeqT = Seq (Maybe Text)
+-- | Abstract 'RLEVecT' type utilizing a sequence.
+type RLEVecT = DVB.Vector (Maybe Text)
 
--- | Abstract data type representing a 'RLESeqT' in the (strict) ST monad.
-type STRLESeqT s a = STRef s RLESeqT
+-- | Abstract data type representing a 'RLEVecT' in the (strict) ST monad.
+type STRLEVecT s a = STRef s RLEVecT
 
--- | State function to push 'RLESeqT' data into stack.
-pushSTRLESeqT :: STRLESeqT s (Maybe Text) -> (Maybe Text) -> ST s ()
-pushSTRLESeqT s Nothing  = do
+-- | State function to push 'RLEVecT' data into stack.
+pushSTRLEVecT :: STRLEVecT s (Maybe Text) -> (Maybe Text) -> ST s ()
+pushSTRLEVecT s Nothing  = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-pushSTRLESeqT s (Just e) = do
+  writeSTRef s (DVB.snoc s2 Nothing)
+pushSTRLEVecT s (Just e) = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Just e)
+  writeSTRef s (DVB.snoc s2 (Just e))
 
--- | State function to create empty 'STRLESeqT' type.
-emptySTRLESeqT :: ST s (STRLESeqT s a)
-emptySTRLESeqT = newSTRef DS.empty
+-- | State function to create empty 'STRLEVecT' type.
+emptySTRLEVecT :: ST s (STRLEVecT s a)
+emptySTRLEVecT = newSTRef DVB.empty
 
 -- | Abstract 'STRLETempT' state type.
 type STRLETempT s a = STRef s (Maybe Text)
@@ -247,52 +247,52 @@ emptySTRLECounterT :: ST s (STRLECounterT s Int)
 emptySTRLECounterT = newSTRef (-1)
 
 -- | Strict state monad function.
-seqToRLET :: RLESeqT ->
-             ST s RLESeqT
-seqToRLET DS.Empty      = do
-  trleseqstackempty  <- emptySTRLESeqT
-  trleseqstackemptyr <- readSTRef trleseqstackempty
-  return trleseqstackemptyr
-seqToRLET (x DS.:<| xs) = do
-  trleseqstack     <- emptySTRLESeqT
+vecToRLET :: RLEVecT ->
+             ST s RLEVecT
+vecToRLET (DVB.uncons -> Nothing)     = do
+  trlevecstackempty  <- emptySTRLEVecT
+  trlevecstackemptyr <- readSTRef trlevecstackempty
+  return trlevecstackemptyr
+vecToRLET (DVB.uncons -> Just (v,vs)) = do
+  trlevecstack     <- emptySTRLEVecT
   trlecounterstack <- emptySTRLECounterT
   trletempstack    <- emptySTRLETempT
   updateSTRLECounterT trlecounterstack
                       1
   updateSTRLETempT trletempstack
-                   x
-  iRLET xs
-        trleseqstack
+                   v
+  iRLET vs
+        trlevecstack
         trlecounterstack
         trletempstack
-  trleseqstackr <- readSTRef trleseqstack
-  return trleseqstackr
+  trlevecstackr <- readSTRef trlevecstack
+  return trlevecstackr
     where
-      iRLET DS.Empty      trless trlecs trlets = do
+      iRLET (DVB.uncons -> Nothing)     trless trlecs trlets = do
         ctrlecs <- readSTRef trlecs
         ctrlets <- readSTRef trlets
-        pushSTRLESeqT trless
+        pushSTRLEVecT trless
                       (Just       $
                        DText.pack $
                        show ctrlecs)
-        pushSTRLESeqT trless
+        pushSTRLEVecT trless
                       ctrlets 
         pure ()
-      iRLET (y DS.:<| ys) trless trlecs trlets = do
+      iRLET (DVB.uncons -> Just (y,ys)) trless trlecs trlets = do
         ctrlecs <- readSTRef trlecs
         ctrlets <- readSTRef trlets
         if | isNothing y
-           -> do pushSTRLESeqT trless
+           -> do pushSTRLEVecT trless
                                (Just       $
                                 DText.pack $
                                 show ctrlecs)
-                 pushSTRLESeqT trless
+                 pushSTRLEVecT trless
                                ctrlets
-                 pushSTRLESeqT trless
+                 pushSTRLEVecT trless
                                (Just       $
                                 DText.pack $
                                 show (1 :: Int))
-                 pushSTRLESeqT trless
+                 pushSTRLEVecT trless
                                Nothing
                  updateSTRLETempT trlets
                                   Nothing
@@ -317,11 +317,11 @@ seqToRLET (x DS.:<| xs) = do
                        trlecs
                        trlets
            | otherwise
-           -> do pushSTRLESeqT trless
+           -> do pushSTRLEVecT trless
                                (Just       $
                                 DText.pack $
                                 show ctrlecs)
-                 pushSTRLESeqT trless
+                 pushSTRLEVecT trless
                                ctrlets
                  updateSTRLECounterT trlecs
                                      1
@@ -337,59 +337,69 @@ seqToRLET (x DS.:<| xs) = do
 
 {-fromRLE (ByteString) functions.-}
 
--- | Abstract 'FRLESeqB' type utilizing a sequence.
-type FRLESeqB = Seq (Maybe ByteString)
+-- | 'DVB.Vector' auxilary function
+-- to pattern match on first two elements
+-- of a vector.
+unconsb2 :: DVB.Vector a -> Maybe (a,DVB.Vector a,Maybe (DVB.Vector a))
+unconsb2 v = if | DVB.length v < 3
+                -> Just (DVB.unsafeHead v,DVB.drop 1 v,Nothing)
+                | otherwise
+                -> Just (DVB.unsafeHead v,DVB.drop 1 v,Just $ DVB.drop 2 v)
 
--- | Abstract data type representing a 'FRLESeqB' in the (strict) ST monad.
-type FSTRLESeqB s a = STRef s FRLESeqB
+-- | Abstract 'FRLEVecB' type utilizing a sequence.
+type FRLEVecB = DVB.Vector (Maybe ByteString)
 
--- | State function to push 'FRLESeqB' data into stack.
-pushFSTRLESeqB :: FSTRLESeqB s (Maybe ByteString) -> (Maybe ByteString) -> ST s ()
-pushFSTRLESeqB s Nothing  = do
+-- | Abstract data type representing a 'FRLEVecB' in the (strict) ST monad.
+type FSTRLEVecB s a = STRef s FRLEVecB
+
+-- | State function to push 'FRLEVecB' data into stack.
+pushFSTRLEVecB :: FSTRLEVecB s (Maybe ByteString) -> (Maybe ByteString) -> ST s ()
+pushFSTRLEVecB s Nothing  = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-pushFSTRLESeqB s (Just e) = do
+  writeSTRef s (DVB.snoc s2 Nothing)
+pushFSTRLEVecB s (Just e) = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Just e)
+  writeSTRef s (DVB.snoc s2 (Just e))
 
--- | State function to create empty 'FSTRLESeqB' type.
-emptyFSTRLESeqB :: ST s (FSTRLESeqB s a)
-emptyFSTRLESeqB = newSTRef DS.empty
+-- | State function to create empty 'FSTRLEVecB' type.
+emptyFSTRLEVecB :: ST s (FSTRLEVecB s a)
+emptyFSTRLEVecB = newSTRef DVB.empty
 
 -- | Strict state monad function.
-seqFromRLEB :: RLEB
-            -> ST s FRLESeqB
-seqFromRLEB (RLEB DS.Empty) = do
-  fbrleseqstackempty  <- emptyFSTRLESeqB
-  fbrleseqstackemptyr <- readSTRef fbrleseqstackempty
-  return fbrleseqstackemptyr
-seqFromRLEB xs              = do
-  fbrleseqstack <- emptySTRLESeqB
-  let rlebseq = (\(RLEB b) -> b) xs
-  iFRLEB rlebseq
-         fbrleseqstack
-  fbrleseqstackr <- readSTRef fbrleseqstack
-  return fbrleseqstackr
+vecFromRLEB :: RLEB
+            -> ST s FRLEVecB
+vecFromRLEB (RLEB (DVB.uncons -> Nothing)) = do
+  fbrlevecstackempty  <- emptyFSTRLEVecB
+  fbrlevecstackemptyr <- readSTRef fbrlevecstackempty
+  return fbrlevecstackemptyr
+vecFromRLEB vs                             = do
+  fbrlevecstack <- emptySTRLEVecB
+  let rlebvec = (\(RLEB b) -> b) vs
+  iFRLEB rlebvec
+         fbrlevecstack
+  fbrlevecstackr <- readSTRef fbrlevecstack
+  return fbrlevecstackr
     where
-      iFRLEB (y1 DS.:<| y2 DS.:<| DS.Empty) fbrless =
+      iFRLEB (unconsb2 -> Just (y1,y2,Nothing)) fbrless =
         if | isJust y1    &&
-             isNothing y2
-           -> do pushFSTRLESeqB fbrless
+             isNothing (DVB.head y2)
+           -> do pushFSTRLEVecB fbrless
                                 Nothing
                  pure () 
            | otherwise
            -> do let y1' = read        $
                            BSC8.unpack $
                            fromJust y1 :: Int
-                 let y2' = fromJust y2
+                 let y2' = fromJust $
+                           DVB.head y2
                  CM.replicateM_ y1'
-                                (pushFSTRLESeqB fbrless
+                                (pushFSTRLEVecB fbrless
                                                 (Just y2'))
                  pure () 
-      iFRLEB (y1 DS.:<| y2 DS.:<| ys)       fbrless =
+      iFRLEB (unconsb2 -> Just (y1,y2,Just ys)) fbrless =
         if | isJust y1     &&
-             isNothing y2
-           -> do pushFSTRLESeqB fbrless
+             isNothing (DVB.head y2)
+           -> do pushFSTRLEVecB fbrless
                                 Nothing
                  iFRLEB ys
                         fbrless
@@ -397,74 +407,82 @@ seqFromRLEB xs              = do
            -> do let y1' = read        $
                            BSC8.unpack $
                            fromJust y1 :: Int
-                 let y2' = fromJust y2
+                 let y2' = fromJust $
+                           DVB.head y2
                  CM.replicateM_ y1'
-                                (pushFSTRLESeqB fbrless
+                                (pushFSTRLEVecB fbrless
                                                 (Just y2'))
                  iFRLEB ys
-                        fbrless 
-      iFRLEB (DSI.Seq EmptyT)               _       = pure ()
-      iFRLEB (DSI.Seq (Single _))           _       = pure ()
-      iFRLEB (DSI.Seq (Deep _ _ _ _))       _       = pure ()
+                        fbrless
 
 {---------------------------------}
 
 
 {-fromRLE (Text) functions.-}
 
--- | Abstract 'FRLESeqT' type utilizing a sequence.
-type FRLESeqT = Seq (Maybe Text)
+-- | 'DVB.Vector' auxilary function
+-- to pattern match on first two elements
+-- of a vector.
+unconst2 :: DVB.Vector a -> Maybe (a,DVB.Vector a, Maybe (DVB.Vector a))
+unconst2 v = if | DVB.length v < 3
+                -> Just (DVB.unsafeHead v,DVB.drop 1 v,Nothing)
+                | otherwise
+                -> Just (DVB.unsafeHead v, DVB.drop 1 v,Just $ DVB.drop 2 v)
 
--- | Abstract data type representing a 'FRLESeqT' in the (strict) ST monad.
-type FSTRLESeqT s a = STRef s FRLESeqT
+-- | Abstract 'FRLEVecT' type utilizing a sequence.
+type FRLEVecT = DVB.Vector (Maybe Text)
 
--- | State function to push 'FSTRLESeqT' data into stack.
-pushFSTRLESeqT :: FSTRLESeqT s (Maybe Text) -> (Maybe Text) -> ST s ()
-pushFSTRLESeqT s Nothing  = do
+-- | Abstract data type representing a 'FRLEVecT' in the (strict) ST monad.
+type FSTRLEVecT s a = STRef s FRLEVecT
+
+-- | State function to push 'FSTRLEVecT' data into stack.
+pushFSTRLEVecT :: FSTRLEVecT s (Maybe Text) -> (Maybe Text) -> ST s ()
+pushFSTRLEVecT s Nothing  = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-pushFSTRLESeqT s (Just e) = do
+  writeSTRef s (DVB.snoc s2 Nothing)
+pushFSTRLEVecT s (Just e) = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Just e)
+  writeSTRef s (DVB.snoc s2 (Just e))
 
--- | State function to create empty 'FSTRLESeqT' type.
-emptyFSTRLESeqT :: ST s (FSTRLESeqT s a)
-emptyFSTRLESeqT = newSTRef DS.empty
+-- | State function to create empty 'FSTRLEVecT' type.
+emptyFSTRLEVecT :: ST s (FSTRLEVecT s a)
+emptyFSTRLEVecT = newSTRef DVB.empty
 
 -- | Strict state monad function.
-seqFromRLET :: RLET ->
-               ST s FRLESeqT
-seqFromRLET (RLET DS.Empty) = do
-  ftrleseqstackempty  <- emptyFSTRLESeqT
-  ftrleseqstackemptyr <- readSTRef ftrleseqstackempty
-  return ftrleseqstackemptyr
-seqFromRLET xs              = do
-  ftrleseqstack <- emptySTRLESeqT
-  let rletseq = (\(RLET t) -> t) xs
-  iFRLET rletseq
-         ftrleseqstack
-  ftrleseqstackr <- readSTRef ftrleseqstack
-  return ftrleseqstackr
-    where
-      iFRLET (y1 DS.:<| y2 DS.:<| DS.Empty) ftrless =
+vecFromRLET :: RLET ->
+               ST s FRLEVecT
+vecFromRLET (RLET (DVB.uncons -> Nothing)) = do
+  ftrlevecstackempty  <- emptyFSTRLEVecT
+  ftrlevecstackemptyr <- readSTRef ftrlevecstackempty
+  return ftrlevecstackemptyr
+vecFromRLET vs                             = do
+  ftrlevecstack <- emptySTRLEVecT
+  let rletvec = (\(RLET t) -> t) vs
+  iFRLET rletvec
+         ftrlevecstack
+  ftrlevecstackr <- readSTRef ftrlevecstack
+  return ftrlevecstackr
+    where 
+      iFRLET (unconst2 -> Just (y1,y2,Nothing)) ftrless =
         if | isJust y1    &&
-             isNothing y2
-           -> do pushFSTRLESeqT ftrless
+             isNothing (DVB.head y2)
+           -> do pushFSTRLEVecT ftrless
                                 Nothing
                  pure ()
            | otherwise
            -> do let y1' = read         $
                            DText.unpack $
                            fromJust y1 :: Int
-                 let y2' = fromJust y2
+                 let y2' = fromJust $
+                           DVB.head y2
                  CM.replicateM_ y1'
-                                (pushFSTRLESeqT ftrless
+                                (pushFSTRLEVecT ftrless
                                                 (Just y2'))
                  pure ()
-      iFRLET (y1 DS.:<| y2 DS.:<| ys)       ftrless =
+      iFRLET (unconst2 -> Just (y1,y2,Just ys)) ftrless =
         if | isJust y1     &&
-             isNothing y2
-           -> do pushFSTRLESeqT ftrless
+             isNothing (DVB.head y2)
+           -> do pushFSTRLEVecT ftrless
                                 Nothing
                  iFRLET ys
                         ftrless
@@ -472,14 +490,12 @@ seqFromRLET xs              = do
            -> do let y1' = read         $
                            DText.unpack $
                            fromJust y1 :: Int
-                 let y2' = fromJust y2
+                 let y2' = fromJust $
+                           DVB.head y2
                  CM.replicateM_ y1'
-                                (pushFSTRLESeqT ftrless
+                                (pushFSTRLEVecT ftrless
                                                 (Just y2'))
                  iFRLET ys
                         ftrless
-      iFRLET (DSI.Seq EmptyT)               _       = pure ()
-      iFRLET (DSI.Seq (Single _))           _       = pure ()
-      iFRLET (DSI.Seq (Deep _ _ _ _))       _       = pure ()
 
 {---------------------------}
