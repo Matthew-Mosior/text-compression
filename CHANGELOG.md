@@ -38,4 +38,4 @@
 
 ## 0.1.0.9 -- 2022-11-12
 
-* Slight optimization to tailsV function to return a Boxed vector instead of a list.
+* Switching back to sequences for maintainability and performance.

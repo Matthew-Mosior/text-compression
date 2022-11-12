@@ -30,29 +30,28 @@ import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS (ByteString,concat,pack,unpack)
 import Data.Foldable as DFold (toList)
+import Data.Sequence as DS
 import Data.STRef()
 import Data.Text (Text)
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
-import Data.Vector as DVB (empty,iterateN,length,zip)
-import Data.Vector.Unboxed as DVU (Unbox,fromList)
 import Data.Word (Word8)
-import GHC.Generics (Generic)
+import GHC.Generics(Generic)
 
 
 {-toBWT Function(s)-}
 
 -- | Takes a String and returns the Burrows-Wheeler Transform (BWT).
 -- Implemented via a 'SuffixArray'.
-toBWT :: (Unbox a,Ord a)
-      => [a]
-      -> BWT a
-toBWT [] = BWT DVB.empty
+toBWT :: Ord a =>
+         [a]   ->
+         BWT a
+toBWT [] = DS.Empty
 toBWT xs = do
   let saxs = createSuffixArray xss
   saToBWT saxs
           xss
     where
-      xss = DVU.fromList xs
+      xss = DS.fromList xs
 
 -- | Helper function for converting a 'ByteString'
 -- to a 'BWT' 'Word8'.
@@ -81,17 +80,17 @@ textToBWT = TextBWT . bytestringToBWT . DTE.encodeUtf8
 -- This function utilizes the state monad (strict) in order
 -- to implement the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) Inverse BWT algorithm by backtracking
 -- indices starting with the (__Nothing__,_) entry.
-fromBWT :: Ord a
-        => BWT a
-        -> [a]
+fromBWT :: Ord a =>
+           BWT a ->
+           [a]
 fromBWT bwt = do
   let originall = CMST.runST $ magicInverseBWT magicsz
   DFold.toList originall
     where
-      magicsz = sortVecBWT zipped
-      zipped  = DVB.zip bwtt
-                        (DVB.iterateN (DVB.length bwtt) (+1) 0)
-      bwtt    = (\(BWT t) -> t) bwt
+      magicsz = DS.sortBy (\(a,b) (c,d) -> sortTB (a,b) (c,d))
+                zipped
+      zipped  = DS.zip bwt
+                       (DS.iterateN (DS.length bwt) (+1) 0)
 
 -- | Helper function for converting a 'BWT' of 'Word8's
 -- to a 'ByteString'.

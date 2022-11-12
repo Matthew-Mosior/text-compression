@@ -28,11 +28,10 @@ import Data.ByteString.Char8()
 import Data.Char()
 import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
+import Data.Sequence as DS
 import Data.STRef()
 import Data.Text as DText 
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
-import Data.Vector as DVB (Vector,empty,map,uncons)
-import Data.Vector.Unboxed()
 import Data.Word (Word8)
 import Prelude as P
 
@@ -68,7 +67,7 @@ textToBWTToRLET = textBWTToRLET . textToBWT
 textBWTToRLEB :: TextBWT
               -> RLEB
 textBWTToRLEB xs =
-  RLEB (CMST.runST $ vecToRLEB xss)
+  RLEB (CMST.runST $ seqToRLEB xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -77,16 +76,15 @@ textBWTToRLEB xs =
                               BS.singleton $
                               fromJust x
                  )
-            ((\(BWT t) -> t) $
-            ((\(TextBWT t) -> t) xs))
+            ((\(TextBWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
 bytestringBWTToRLEB :: BWT Word8
                     -> RLEB
-bytestringBWTToRLEB (BWT (DVB.uncons -> Nothing)) = RLEB DVB.empty
-bytestringBWTToRLEB xs                            =
-  RLEB (CMST.runST $ vecToRLEB xss)
+bytestringBWTToRLEB DS.Empty = RLEB DS.Empty
+bytestringBWTToRLEB xs       =
+  RLEB (CMST.runST $ seqToRLEB xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -95,14 +93,14 @@ bytestringBWTToRLEB xs                            =
                               BS.singleton $
                               fromJust x
                  )
-            ((\(BWT t) -> t) xs)
+            xs
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
 textBWTToRLET :: TextBWT
               -> RLET
 textBWTToRLET xs =
-  RLET (CMST.runST $ vecToRLET xss)
+  RLET (CMST.runST $ seqToRLET xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -112,16 +110,15 @@ textBWTToRLET xs =
                               BS.singleton   $
                               fromJust x
                  )
-            ((\(BWT t) -> t) $
-            ((\(TextBWT t) -> t) xs))
+            ((\(TextBWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLET').
 bytestringBWTToRLET :: BWT Word8
                     -> RLET
-bytestringBWTToRLET (BWT (DVB.uncons -> Nothing)) = RLET DVB.empty
-bytestringBWTToRLET xs                            =
-  RLET (CMST.runST $ vecToRLET xss)
+bytestringBWTToRLET DS.Empty = RLET DS.Empty
+bytestringBWTToRLET xs       =
+  RLET (CMST.runST $ seqToRLET xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -131,14 +128,14 @@ bytestringBWTToRLET xs                            =
                               BS.singleton   $
                               fromJust x
                  )
-            ((\(BWT t) -> t) xs)
+            xs
 
 -- | Takes a 'Text' and returns the Run-length encoding ('RLEB').
-textToRLEB :: DVB.Vector (Maybe Text)
+textToRLEB :: Seq (Maybe Text)
            -> RLEB
-textToRLEB (DVB.uncons -> Nothing) = RLEB DVB.empty
-textToRLEB xs                      = 
-  RLEB (CMST.runST $ vecToRLEB xss)
+textToRLEB DS.Empty = RLEB DS.Empty
+textToRLEB xs       = 
+  RLEB (CMST.runST $ seqToRLEB xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -149,26 +146,26 @@ textToRLEB xs                      =
                  )
             xs
 
--- | Takes a 'DVB.Vector' of 'ByteString's and returns the Run-length encoding ('RLEB').
-bytestringToRLEB :: DVB.Vector (Maybe ByteString)
+-- | Takes a 'Seq' of 'ByteString's and returns the Run-length encoding ('RLEB').
+bytestringToRLEB :: Seq (Maybe ByteString)
                  -> RLEB
-bytestringToRLEB (DVB.uncons -> Nothing) = RLEB DVB.empty
-bytestringToRLEB xs                      =
- RLEB (CMST.runST $ vecToRLEB xs)
+bytestringToRLEB DS.Empty = RLEB DS.Empty
+bytestringToRLEB xs       =
+ RLEB (CMST.runST $ seqToRLEB xs)
 
 -- | Takes a 'Text' and returns the Run-length encoding (RLE).
-textToRLET :: DVB.Vector (Maybe Text)
+textToRLET :: Seq (Maybe Text)
            -> RLET
-textToRLET (DVB.uncons -> Nothing) = RLET DVB.empty
-textToRLET xs                      =
-  RLET (CMST.runST $ vecToRLET xs)
+textToRLET DS.Empty = RLET DS.Empty
+textToRLET xs       =
+  RLET (CMST.runST $ seqToRLET xs)
 
 -- | Takes a 'ByteString' and returns the Run-length encoding (RLE).
-bytestringToRLET :: DVB.Vector (Maybe ByteString)
+bytestringToRLET :: Seq (Maybe ByteString)
                  -> RLET
-bytestringToRLET (DVB.uncons -> Nothing) = RLET DVB.empty
-bytestringToRLET xs                      =
-  RLET (CMST.runST $ vecToRLET xss)
+bytestringToRLET DS.Empty = RLET DS.Empty
+bytestringToRLET xs       =
+  RLET (CMST.runST $ seqToRLET xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -194,17 +191,15 @@ bytestringFromBWTFromRLEB = bytestringFromByteStringBWT . bytestringBWTFromRLEB
 -- back to the original 'ByteString'.
 bytestringFromBWTFromRLET :: RLET
                           -> ByteString
-bytestringFromBWTFromRLET vs = bytestringFromByteStringBWT $
-                               BWT                         $
-                               DVB.map (\x -> if | isNothing x
-                                                 -> Nothing
-                                                 | otherwise
-                                                 -> Just           $
-                                                    DTE.encodeUtf8 $
-                                                    fromJust x
-                                       )
-                                                           $ 
-                               ((\(BWT t) -> t) (textBWTFromRLET vs))
+bytestringFromBWTFromRLET = bytestringFromByteStringBWT . fmap (\x -> if | isNothing x
+                                                                         -> Nothing
+                                                                         | otherwise
+                                                                         -> Just           $
+                                                                            DTE.encodeUtf8 $
+                                                                            fromJust x
+                                                               )
+                                                        .
+                            textBWTFromRLET
 
 -- | Helper function for converting a 'BWT'ed 'RLEB'
 -- back to the original 'Text'.
@@ -222,92 +217,92 @@ textFromBWTFromRLET = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringB
 -- the 'BWT' of 'Text's.
 textBWTFromRLET :: RLET
                 -> BWT Text
-textBWTFromRLET (RLET (DVB.uncons -> Nothing)) = BWT DVB.empty
-textBWTFromRLET vs              = 
-  BWT (CMST.runST $ vecFromRLET vs)
+textBWTFromRLET (RLET DS.Empty) = DS.Empty
+textBWTFromRLET xs              = 
+  CMST.runST $ seqFromRLET xs
 
 -- | Takes a 'RLET' and returns
 -- the 'BWT' of 'ByteString's.
 bytestringBWTFromRLET :: RLET
                       -> BWT ByteString
-bytestringBWTFromRLET (RLET (DVB.uncons -> Nothing)) = BWT DVB.empty
-bytestringBWTFromRLET vs                             = do
-  let originalbwtb = CMST.runST $ vecFromRLET vs
-  BWT (DVB.map (\x -> if | isNothing x
-                         -> Nothing
-                         | otherwise
-                         -> Just           $
-                            DTE.encodeUtf8 $
-                            fromJust x 
-               ) originalbwtb)
+bytestringBWTFromRLET (RLET DS.Empty) = DS.Empty
+bytestringBWTFromRLET xs              = do
+  let originalbwtb = CMST.runST $ seqFromRLET xs
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    DTE.encodeUtf8 $
+                    fromJust x 
+       ) originalbwtb
 
 -- | Takes a 'RLEB' and returns
 -- the 'BWT' of 'Text's.
 textBWTFromRLEB :: RLEB
                 -> BWT Text
-textBWTFromRLEB (RLEB (DVB.uncons -> Nothing)) = BWT DVB.empty
-textBWTFromRLEB vs                             = do
-  let originalbwtt = CMST.runST $ vecFromRLEB vs
-  BWT (DVB.map (\x -> if | isNothing x
-                         -> Nothing
-                         | otherwise
-                         -> Just           $
-                            DTE.decodeUtf8 $
-                            fromJust x
-               ) originalbwtt)
+textBWTFromRLEB (RLEB DS.Empty) = DS.Empty
+textBWTFromRLEB xs              = do
+  let originalbwtt = CMST.runST $ seqFromRLEB xs
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    DTE.decodeUtf8 $
+                    fromJust x
+       ) originalbwtt
 
 -- | Take a 'RLEB' and returns
 -- the 'BWT' of 'ByteString's.
 bytestringBWTFromRLEB :: RLEB 
                       -> BWT ByteString
-bytestringBWTFromRLEB (RLEB (DVB.uncons -> Nothing)) = BWT DVB.empty
-bytestringBWTFromRLEB vs                             =
-  BWT (CMST.runST $ vecFromRLEB vs)
+bytestringBWTFromRLEB (RLEB DS.Empty) = DS.Empty
+bytestringBWTFromRLEB xs              =
+  CMST.runST $ seqFromRLEB xs
 
 -- | Takes a 'RLEB' and returns
--- the original 'DVB.Vector' of 'Text's.
+-- the original 'Seq' of 'Text's.
 textFromRLEB :: RLEB
-             -> DVB.Vector (Maybe Text)
-textFromRLEB (RLEB (DVB.uncons -> Nothing)) = DVB.empty
-textFromRLEB vs                             = do
-  let originalt = CMST.runST $ vecFromRLEB vs
-  DVB.map (\x -> if | isNothing x
-                    -> Nothing
-                    | otherwise
-                    -> Just           $
-                       DTE.decodeUtf8 $
-                       fromJust x
-          ) originalt
+             -> Seq (Maybe Text)
+textFromRLEB (RLEB DS.Empty) = DS.Empty
+textFromRLEB xs              = do
+  let originalt = CMST.runST $ seqFromRLEB xs
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    DTE.decodeUtf8 $
+                    fromJust x
+       ) originalt
 
 -- | Takes a 'RLEB' and returns
--- the original 'DVB.Vector' of 'ByteString's.
+-- the original 'Seq' of 'ByteString's.
 bytestringFromRLEB :: RLEB
-                   -> DVB.Vector (Maybe ByteString)
-bytestringFromRLEB (RLEB (DVB.uncons -> Nothing)) = DVB.empty
-bytestringFromRLEB vs                             =
-  CMST.runST $ vecFromRLEB vs
+                   -> Seq (Maybe ByteString)
+bytestringFromRLEB (RLEB DS.Empty) = DS.Empty
+bytestringFromRLEB xs              = do
+  CMST.runST $ seqFromRLEB xs
 
 -- | Takes a 'RLET' and returns
--- the original 'DVB.Vector' of 'Text's.
+-- the original 'Seq' of 'Text's.
 textFromRLET :: RLET
-             -> DVB.Vector (Maybe Text)
-textFromRLET (RLET (DVB.uncons -> Nothing)) = DVB.empty
-textFromRLET vs                             =
-  CMST.runST $ vecFromRLET vs
+             -> Seq (Maybe Text)
+textFromRLET (RLET DS.Empty) = DS.Empty
+textFromRLET xs              = do
+  CMST.runST $ seqFromRLET xs
 
 -- | Takes a 'RLET' and returns
--- the original 'DVB.Vector' of 'ByteString's.
+-- the original 'Seq' of 'ByteString's.
 bytestringFromRLET :: RLET
-                   -> DVB.Vector (Maybe ByteString)
-bytestringFromRLET (RLET (DVB.uncons -> Nothing)) = DVB.empty
-bytestringFromRLET vs                             = do
-  let originalb = CMST.runST $ vecFromRLET vs
-  DVB.map (\x -> if | isNothing x
-                    -> Nothing
-                    | otherwise
-                    -> Just           $
-                       DTE.encodeUtf8 $
-                       fromJust x
-          ) originalb
+                   -> Seq (Maybe ByteString)
+bytestringFromRLET (RLET DS.Empty) = DS.Empty
+bytestringFromRLET xs              = do
+  let originalb = CMST.runST $ seqFromRLET xs
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $ 
+                    DTE.encodeUtf8 $
+                    fromJust x
+       ) originalb
 
 {---------------------}
