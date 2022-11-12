@@ -31,3 +31,7 @@
 ## 0.1.0.7 -- 2022-11-07
 
 * Added Run-length encoding (RLE) implementation.
+
+## 0.1.0.8 -- 2022-11-11
+
+* Optimized BWT and RLE implementations by switching out sequences with vectors.
