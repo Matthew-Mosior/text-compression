@@ -92,4 +92,4 @@ library
     default-language: Haskell2010 
 
     -- Set highest (reasonable) optimization level to compile with.
-    ghc-options: -O2
+    ghc-options: -O2 -fprof-auto
