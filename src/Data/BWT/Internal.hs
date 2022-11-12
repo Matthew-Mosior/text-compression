@@ -45,15 +45,15 @@ import Control.Monad as CM (when)
 import Control.Monad.ST as CMST (ST,runST)
 import Control.Monad.State.Strict()
 import Data.Foldable as DFold
-import Data.List as DL (length,map)
+import Data.List as DL (map)
 import Data.Maybe as DMaybe (fromJust,isNothing)
 import Data.Sequence as DS (fromList,(><),null,singleton,zip,sortBy,tails,inits)
 import Data.Massiv.Array as DMA
 import Data.Massiv.Core()
 import Data.STRef as DSTR (STRef,newSTRef,readSTRef,writeSTRef)
-import Data.Vector as DVB (Vector,empty,findIndex,fromList,iterateN,map,snoc,thaw,unsafeFreeze,zip,uncons,(!))
+import Data.Vector as DVB (Vector,length,cons,empty,findIndex,iterateN,map,snoc,thaw,unsafeFreeze,zip,uncons,(!))
 import Data.Vector.Algorithms.Tim as DVAT (sortBy)
-import Data.Vector.Unboxed as DVU (Vector,empty,null,tail,uncons,(!))
+import Data.Vector.Unboxed as DVU (Vector,null,tail,uncons,(!))
 import GHC.Generics (Generic)
 import Prelude as P
 
@@ -107,10 +107,10 @@ saToBWT vs                      t =
 -- well-known tails function in the List library.
 tailsV :: Unbox a
        => DVU.Vector a
-       -> [DVU.Vector a]
-tailsV (DVU.uncons -> Nothing) = [DVU.empty]
+       -> DVB.Vector (DVU.Vector a)
+tailsV (DVU.uncons -> Nothing) = DVB.empty
 tailsV vs                      =
-  vs : (tailsV (DVU.tail vs))
+  DVB.cons vs (tailsV (DVU.tail vs))
 
 -- | Custom sort function for 'DVB.Vector's
 -- used in the 'createSuffixArray' function.
@@ -154,12 +154,12 @@ createSuffixArray vs =
   vssuffixesfff
     where
       vssuffixes         = tailsV vs
-      vssuffixesf        = DVB.zip (DVB.iterateN (DL.length vssuffixes) (+1) 1 :: DVB.Vector Int)
-                                   (DVB.fromList vssuffixes)
+      vssuffixesf        = DVB.zip (DVB.iterateN (DVB.length vssuffixes) (+1) 1 :: DVB.Vector Int)
+                                   vssuffixes
       vssuffixesffsorted = sortVecSA vssuffixesf
       vssuffixesfff      = (\(a,(b,c)) -> (a,b,c))
                            <$>
-                           DVB.zip (DVB.iterateN (DL.length vssuffixesffsorted) (+1) 1 :: DVB.Vector Int)
+                           DVB.zip (DVB.iterateN (DVB.length vssuffixesffsorted) (+1) 1 :: DVB.Vector Int)
                                    vssuffixesffsorted 
 
 {------------------}

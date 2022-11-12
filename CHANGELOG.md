@@ -35,3 +35,7 @@
 ## 0.1.0.8 -- 2022-11-11
 
 * Optimized BWT and RLE implementations by switching out sequences with vectors.
+
+## 0.1.0.9 -- 2022-11-12
+
+* Slight optimization to tailsV function to return a Boxed vector instead of a list.
