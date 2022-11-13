@@ -30,7 +30,7 @@ import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS (ByteString,concat,pack,unpack)
 import Data.Foldable as DFold (toList)
-import Data.Sequence as DS
+import Data.Sequence as DS (Seq(..),fromList,iterateN,length,unstableSortBy,zip)
 import Data.STRef()
 import Data.Text (Text)
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
@@ -45,11 +45,11 @@ import GHC.Generics(Generic)
 toBWT :: Ord a =>
          [a]   ->
          BWT a
-toBWT [] = DS.Empty
+toBWT [] = BWT DS.Empty
 toBWT xs = do
   let saxs = createSuffixArray xss
-  saToBWT saxs
-          xss
+  BWT (saToBWT saxs
+               xss)
     where
       xss = DS.fromList xs
 
@@ -87,10 +87,11 @@ fromBWT bwt = do
   let originall = CMST.runST $ magicInverseBWT magicsz
   DFold.toList originall
     where
-      magicsz = DS.sortBy (\(a,b) (c,d) -> sortTB (a,b) (c,d))
+      magicsz = DS.unstableSortBy (\(a,b) (c,d) -> sortTB (a,b) (c,d))
                 zipped
-      zipped  = DS.zip bwt
-                       (DS.iterateN (DS.length bwt) (+1) 0)
+      zipped  = DS.zip bwtt
+                       (DS.iterateN (DS.length bwtt) (+1) 0)
+      bwtt    = (\(BWT t) -> t) bwt
 
 -- | Helper function for converting a 'BWT' of 'Word8's
 -- to a 'ByteString'.

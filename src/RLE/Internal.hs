@@ -48,7 +48,7 @@ import Data.ByteString.Char8 as BSC8 (pack,unpack)
 import Data.ByteString.Internal()
 import Data.List()
 import Data.Maybe as DMaybe (fromJust,isJust,isNothing)
-import Data.Sequence as DS
+import Data.Sequence as DS (Seq(..),empty,(|>))
 import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
 import Data.Text as DText
