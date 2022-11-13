@@ -38,4 +38,4 @@
 
 ## 0.1.0.9 -- 2022-11-12
 
-* Switching back to sequences for maintainability and performance.
+* Switching back to sequences for maintainability (for now).

@@ -47,7 +47,7 @@ import Control.Monad.State.Strict()
 import Data.Foldable as DFold
 import Data.List as DL
 import Data.Maybe as DMaybe (fromJust,isNothing)
-import Data.Sequence as DS
+import Data.Sequence as DS (Seq(..),empty,findIndexL,fromList,length,index,inits,null,singleton,tails,unstableSortBy,unstableSortOn,zip,(><),(|>),(<|))
 import Data.Massiv.Array as DMA
 import Data.Massiv.Core()
 import Data.STRef as DSTR
@@ -71,7 +71,9 @@ type SuffixArray a = Seq (Suffix a)
 
 -- | The BWT data type.
 -- Uses sequence internally.
-type BWT a         = Seq (Maybe a)
+newtype BWT a = BWT (Seq (Maybe a))
+  deriving (Eq,Ord,Show,Read,Generic)
+
 
 -- | The BWTMatrix data type.
 -- Uses a massiv array internally.
@@ -86,12 +88,12 @@ type BWTMatrix = DMA.Array BN Ix1 String
 -- and the original string (represented as a sequence for performance).
 saToBWT :: SuffixArray a ->
            Seq a         ->
-           BWT a
+           Seq (Maybe a)
 saToBWT DS.Empty      _ = DS.Empty
 saToBWT (y DS.:<| ys) t =
   if | suffixstartpos y /= 1
      -> (Just $ DS.index t (suffixstartpos y - 1 - 1))
-        DS.<| (saToBWT ys t)  
+        DS.<| (saToBWT ys t)
      | otherwise
      -> Nothing
         DS.<| (saToBWT ys t)
@@ -228,7 +230,7 @@ createBWTMatrix t =
                           )
                    zippedfff
       zippedfff  = DFold.toList zippedff
-      zippedff   = DS.sortBy (\(a,_) (c,_) -> compare a c)
+      zippedff   = DS.unstableSortBy (\(a,_) (c,_) -> compare a c)
                    zippedp
       zippedp    = DS.zip suffixesf prefixesf
       suffixesf  = fmap (\x -> if | DS.null x
