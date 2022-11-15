@@ -71,14 +71,16 @@ newtype RLET = RLET (Seq (Maybe Text))
 
 {-toRLE (ByteString) functions.-}
 
--- | Abstract 'RLESeqB' type utilizing a sequence.
+-- | Abstract 'RLESeqB' type utilizing a 'Seq'.
 type RLESeqB = Seq (Maybe ByteString)
 
 -- | Abstract data type representing a 'RLESeqB' in the (strict) ST monad.
 type STRLESeqB s a = STRef s RLESeqB
 
 -- | State function to push 'RLESeqB' data into stack.
-pushSTRLESeqB :: STRLESeqB s (Maybe ByteString) -> Maybe ByteString -> ST s ()
+pushSTRLESeqB :: STRLESeqB s (Maybe ByteString)
+              -> Maybe ByteString
+              -> ST s ()
 pushSTRLESeqB s Nothing  = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> Nothing)
@@ -94,7 +96,9 @@ emptySTRLESeqB = newSTRef DS.empty
 type STRLETempB s a = STRef s (Maybe ByteString)
 
 -- | State function to update 'STRLETempB'.
-updateSTRLETempB :: STRLETempB s (Maybe ByteString) -> Maybe ByteString -> ST s ()
+updateSTRLETempB :: STRLETempB s (Maybe ByteString)
+                 -> Maybe ByteString
+                 -> ST s ()
 updateSTRLETempB s Nothing  = writeSTRef s Nothing
 updateSTRLETempB s (Just e) = writeSTRef s (Just e)
 
@@ -106,7 +110,9 @@ emptySTRLETempB = newSTRef (Just BS.empty)
 type STRLECounterB s a = STRef s Int
 
 -- | State function to update 'STRLECounterB'.
-updateSTRLECounterB :: STRLECounterB s Int -> Int -> ST s ()
+updateSTRLECounterB :: STRLECounterB s Int
+                    -> Int
+                    -> ST s ()
 updateSTRLECounterB s e = writeSTRef s e
 
 -- | State function to create empty 'STRLECounterB' type.
@@ -204,14 +210,16 @@ seqToRLEB (x DS.:<| xs) = do
 
 {-toRLE (Text) functions.-}
 
--- | Abstract 'RLESeqT' type utilizing a sequence.
+-- | Abstract 'RLESeqT' type utilizing a 'Seq'.
 type RLESeqT = Seq (Maybe Text)
 
 -- | Abstract data type representing a 'RLESeqT' in the (strict) ST monad.
 type STRLESeqT s a = STRef s RLESeqT
 
 -- | State function to push 'RLESeqT' data into stack.
-pushSTRLESeqT :: STRLESeqT s (Maybe Text) -> (Maybe Text) -> ST s ()
+pushSTRLESeqT :: STRLESeqT s (Maybe Text)
+              -> (Maybe Text)
+              -> ST s ()
 pushSTRLESeqT s Nothing  = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> Nothing)
@@ -227,7 +235,9 @@ emptySTRLESeqT = newSTRef DS.empty
 type STRLETempT s a = STRef s (Maybe Text)
 
 -- | State function to update 'STRLETempT'.
-updateSTRLETempT :: STRLETempT s (Maybe Text) -> (Maybe Text) -> ST s ()
+updateSTRLETempT :: STRLETempT s (Maybe Text)
+                 -> (Maybe Text)
+                 -> ST s ()
 updateSTRLETempT s Nothing  = writeSTRef s Nothing
 updateSTRLETempT s (Just e) = writeSTRef s (Just e)
 
@@ -239,7 +249,9 @@ emptySTRLETempT = newSTRef (Just DText.empty)
 type STRLECounterT s a = STRef s Int
 
 -- | State function to update 'STRLECounterT'.
-updateSTRLECounterT :: STRLECounterT s Int -> Int -> ST s ()
+updateSTRLECounterT :: STRLECounterT s Int
+                    -> Int
+                    -> ST s ()
 updateSTRLECounterT s e = writeSTRef s e
 
 -- | State function to create empty 'STRLECounterT' type.
@@ -247,8 +259,8 @@ emptySTRLECounterT :: ST s (STRLECounterT s Int)
 emptySTRLECounterT = newSTRef (-1)
 
 -- | Strict state monad function.
-seqToRLET :: RLESeqT ->
-             ST s RLESeqT
+seqToRLET :: RLESeqT
+          -> ST s RLESeqT
 seqToRLET DS.Empty      = do
   trleseqstackempty  <- emptySTRLESeqT
   trleseqstackemptyr <- readSTRef trleseqstackempty
@@ -337,14 +349,16 @@ seqToRLET (x DS.:<| xs) = do
 
 {-fromRLE (ByteString) functions.-}
 
--- | Abstract 'FRLESeqB' type utilizing a sequence.
+-- | Abstract 'FRLESeqB' type utilizing a 'Seq'.
 type FRLESeqB = Seq (Maybe ByteString)
 
 -- | Abstract data type representing a 'FRLESeqB' in the (strict) ST monad.
 type FSTRLESeqB s a = STRef s FRLESeqB
 
 -- | State function to push 'FRLESeqB' data into stack.
-pushFSTRLESeqB :: FSTRLESeqB s (Maybe ByteString) -> (Maybe ByteString) -> ST s ()
+pushFSTRLESeqB :: FSTRLESeqB s (Maybe ByteString)
+               -> (Maybe ByteString)
+               -> ST s ()
 pushFSTRLESeqB s Nothing  = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> Nothing)
@@ -412,14 +426,16 @@ seqFromRLEB xs              = do
 
 {-fromRLE (Text) functions.-}
 
--- | Abstract 'FRLESeqT' type utilizing a sequence.
+-- | Abstract 'FRLESeqT' type utilizing a 'Seq'.
 type FRLESeqT = Seq (Maybe Text)
 
 -- | Abstract data type representing a 'FRLESeqT' in the (strict) ST monad.
 type FSTRLESeqT s a = STRef s FRLESeqT
 
 -- | State function to push 'FSTRLESeqT' data into stack.
-pushFSTRLESeqT :: FSTRLESeqT s (Maybe Text) -> (Maybe Text) -> ST s ()
+pushFSTRLESeqT :: FSTRLESeqT s (Maybe Text)
+               -> (Maybe Text)
+               -> ST s ()
 pushFSTRLESeqT s Nothing  = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> Nothing)

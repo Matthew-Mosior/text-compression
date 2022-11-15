@@ -21,7 +21,17 @@
 -- @"Data.BWT.Internal"@ also has the function 'createBWTMatrix', which can be useful as well, although not used by either 'toBWT' or 'fromBWT'.
 
 
-module Data.BWT where
+module Data.BWT ( -- * To BWT functions
+                  toBWT,
+                  bytestringToBWT,
+                  TextBWT(..),
+                  textToBWT,
+                  -- * From BWT functions
+                  fromBWT,
+                  bytestringFromWord8BWT,
+                  bytestringFromByteStringBWT,
+                  textFromBWT
+                ) where
 
 import Data.BWT.Internal
 
@@ -42,9 +52,9 @@ import GHC.Generics(Generic)
 
 -- | Takes a String and returns the Burrows-Wheeler Transform (BWT).
 -- Implemented via a 'SuffixArray'.
-toBWT :: Ord a =>
-         [a]   ->
-         BWT a
+toBWT :: Ord a
+      => [a]
+      -> BWT a
 toBWT [] = BWT DS.Empty
 toBWT xs = do
   let saxs = createSuffixArray xss
@@ -55,8 +65,8 @@ toBWT xs = do
 
 -- | Helper function for converting a 'ByteString'
 -- to a 'BWT' 'Word8'.
-bytestringToBWT :: ByteString ->
-                   BWT Word8
+bytestringToBWT :: ByteString
+                -> BWT Word8
 bytestringToBWT = toBWT . BS.unpack
 
 -- | A newtype to ensure you only uncompress a BWT created
@@ -66,8 +76,8 @@ newtype TextBWT = TextBWT (BWT Word8)
 
 -- | Helper function for converting 'Text'
 -- to a 'TextBWT'.
-textToBWT :: Text ->
-             TextBWT
+textToBWT :: Text
+          -> TextBWT
 textToBWT = TextBWT . bytestringToBWT . DTE.encodeUtf8
 
 {-------------------}
@@ -80,9 +90,9 @@ textToBWT = TextBWT . bytestringToBWT . DTE.encodeUtf8
 -- This function utilizes the state monad (strict) in order
 -- to implement the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) Inverse BWT algorithm by backtracking
 -- indices starting with the (__Nothing__,_) entry.
-fromBWT :: Ord a =>
-           BWT a ->
-           [a]
+fromBWT :: Ord a
+        => BWT a
+        -> [a]
 fromBWT bwt = do
   let originall = CMST.runST $ magicInverseBWT magicsz
   DFold.toList originall
@@ -107,7 +117,8 @@ bytestringFromByteStringBWT = BS.concat . fromBWT
 
 -- | Helper function for converting 'TextBWT'
 -- to a 'Text'
-textFromBWT :: TextBWT -> Text
+textFromBWT :: TextBWT
+            -> Text
 textFromBWT (TextBWT x) = DTE.decodeUtf8 $
                           bytestringFromWord8BWT x
 
