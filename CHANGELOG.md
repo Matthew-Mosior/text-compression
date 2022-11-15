@@ -39,3 +39,7 @@
 ## 0.1.0.9 -- 2022-11-12
 
 * Switching back to sequences for maintainability (for now).
+
+## 0.1.0.10 -- 2022-11-15
+
+* Added Move-to-front transform (MTF) implementation.

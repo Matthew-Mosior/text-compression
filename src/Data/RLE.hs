@@ -14,7 +14,33 @@
 -- = Run-length encoding (RLE)
 
 
-module Data.RLE where
+module Data.RLE ( -- * To RLE functions
+                  bytestringToBWTToRLEB,
+                  bytestringToBWTToRLET,
+                  textToBWTToRLEB,
+                  textToBWTToRLET,
+                  textBWTToRLEB,
+                  bytestringBWTToRLEB,
+                  textBWTToRLET,
+                  bytestringBWTToRLET,
+                  textToRLEB,
+                  bytestringToRLEB,
+                  textToRLET,
+                  bytestringToRLET,
+                  -- * From RLE functions
+                  bytestringFromBWTFromRLEB,
+                  bytestringFromBWTFromRLET,
+                  textFromBWTFromRLEB,
+                  textFromBWTFromRLET,
+                  textBWTFromRLET,
+                  bytestringBWTFromRLET,
+                  textBWTFromRLEB,
+                  bytestringBWTFromRLEB,
+                  textFromRLEB,
+                  bytestringFromRLEB,
+                  textFromRLET,
+                  bytestringFromRLET                   
+                ) where
 
 import Data.BWT
 import Data.BWT.Internal 
@@ -40,26 +66,26 @@ import Prelude as P
 
 -- | Helper function for converting a 'ByteString'
 -- to a 'RLEB' via a 'BWT' first.
-bytestringToBWTToRLEB :: ByteString ->
-                         RLEB
+bytestringToBWTToRLEB :: ByteString
+                      -> RLEB
 bytestringToBWTToRLEB = bytestringBWTToRLEB . bytestringToBWT
 
 -- | Helper function for converting a 'ByteString'
 -- to a 'RLET' via a 'BWT' first.
-bytestringToBWTToRLET :: ByteString ->
-                         RLET
+bytestringToBWTToRLET :: ByteString
+                      -> RLET
 bytestringToBWTToRLET = bytestringBWTToRLET . bytestringToBWT
 
 -- | Helper function for converting a 'Text'
 -- to a 'RLEB' via a 'BWT' first.
-textToBWTToRLEB :: Text ->
-                   RLEB
+textToBWTToRLEB :: Text
+                -> RLEB
 textToBWTToRLEB = textBWTToRLEB . textToBWT
 
 -- | Helper function for converting a 'Text'
 -- to a 'RLET' via a 'BWT' first.
-textToBWTToRLET :: Text ->
-                   RLET
+textToBWTToRLET :: Text
+                -> RLET
 textToBWTToRLET = textBWTToRLET . textToBWT
 
 -- | Take a 'BWT' of 'Word8's and generate the
@@ -283,7 +309,7 @@ textFromRLEB xs              = do
 bytestringFromRLEB :: RLEB
                    -> Seq (Maybe ByteString)
 bytestringFromRLEB (RLEB DS.Empty) = DS.Empty
-bytestringFromRLEB xs              = do
+bytestringFromRLEB xs              =
   CMST.runST $ seqFromRLEB xs
 
 -- | Takes a 'RLET' and returns
@@ -291,7 +317,7 @@ bytestringFromRLEB xs              = do
 textFromRLET :: RLET
              -> Seq (Maybe Text)
 textFromRLET (RLET DS.Empty) = DS.Empty
-textFromRLET xs              = do
+textFromRLET xs              =
   CMST.runST $ seqFromRLET xs
 
 -- | Takes a 'RLET' and returns

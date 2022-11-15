@@ -33,7 +33,7 @@
 -- Various data structures and custom data types to describe the Burrows-Wheeler Transform (BWT)
 -- and the Inverse BWT.
 --
--- The implementation of the BWT relies upon sequence provided
+-- The implementation of the BWT relies upon 'DS.Seq' provided
 -- by the [containers](https://hackage.haskell.org/package/containers).
 --
 -- The internal 'BWTMatrix' data type relies upon the [massiv](https://hackage.haskell.org/package/massiv) package.
@@ -66,11 +66,11 @@ data Suffix a = Suffix { suffixindex    :: Int
   deriving (Show,Read,Eq,Ord,Generic)
 
 -- | The SuffixArray data type.
--- Uses sequence internally.
+-- Uses 'DS.Seq' internally.
 type SuffixArray a = Seq (Suffix a)
 
 -- | The BWT data type.
--- Uses sequence internally.
+-- Uses 'DS.Seq' internally.
 newtype BWT a = BWT (Seq (Maybe a))
   deriving (Eq,Ord,Show,Read,Generic)
 
@@ -85,10 +85,10 @@ type BWTMatrix = DMA.Array BN Ix1 String
 {-toBWT functions.-}
 
 -- | Computes the Burrows-Wheeler Transform (BWT) using the suffix array
--- and the original string (represented as a sequence for performance).
-saToBWT :: SuffixArray a ->
-           Seq a         ->
-           Seq (Maybe a)
+-- and the original string (represented as a 'DS.Seq' for performance).
+saToBWT :: SuffixArray a
+        -> Seq a        
+        -> Seq (Maybe a)
 saToBWT DS.Empty      _ = DS.Empty
 saToBWT (y DS.:<| ys) t =
   if | suffixstartpos y /= 1
@@ -100,9 +100,9 @@ saToBWT (y DS.:<| ys) t =
 
 -- | Computes the corresponding 'SuffixArray' of a given string. Please see [suffix array](https://en.wikipedia.org/wiki/Suffix_array)
 -- for more information. 
-createSuffixArray :: Ord a =>
-                     Seq a ->
-                     SuffixArray a
+createSuffixArray :: Ord a
+                  => Seq a
+                  -> SuffixArray a
 createSuffixArray xs =
   fmap (\(a,b,c) -> if | not $ DS.null c
                        -> Suffix { suffixindex    = a
@@ -134,21 +134,23 @@ createSuffixArray xs =
 -- | Hierarchical sorting scheme that compares fst first then snd.
 -- Necessary for the setting up the BWT in order to correctly
 -- invert it using the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) algorithm.
-sortTB :: (Ord a1, Ord a2) =>
-          (a1, a2)         ->
-          (a1, a2)         ->
-          Ordering
+sortTB :: (Ord a1,Ord a2)
+       => (a1, a2)
+       -> (a1, a2)
+       -> Ordering
 sortTB (c1,i1) (c2,i2) = compare c1 c2 <>
                          compare i1 i2
 
--- | Abstract BWTSeq type utilizing a sequence.
+-- | Abstract BWTSeq type utilizing a 'DS.Seq'.
 type BWTSeq a = Seq a
 
 -- | Abstract data type representing a BWTSeq in the (strict) ST monad.
 type STBWTSeq s a = STRef s (BWTSeq a)
 
 -- | State function to push BWTString data into stack.
-pushSTBWTSeq :: STBWTSeq s a -> a -> ST s ()
+pushSTBWTSeq :: STBWTSeq s a
+             -> a
+             -> ST s ()
 pushSTBWTSeq s e = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> e)
@@ -161,7 +163,9 @@ emptySTBWTSeq = newSTRef DS.empty
 type STBWTCounter s a = STRef s Int
 
 -- | State function to update BWTCounter.
-updateSTBWTCounter :: STBWTCounter s Int -> Int -> ST s ()
+updateSTBWTCounter :: STBWTCounter s Int
+                   -> Int
+                   -> ST s ()
 updateSTBWTCounter s e = writeSTRef s e
 
 -- | State function to create empty STBWTCounter type.
@@ -169,8 +173,8 @@ emptySTBWTCounter :: ST s (STBWTCounter s Int)
 emptySTBWTCounter = newSTRef (-1)
 
 -- | "Magic" Inverse BWT function.
-magicInverseBWT :: Seq (Maybe a,Int) ->
-                   ST s (BWTSeq a)
+magicInverseBWT :: Seq (Maybe a,Int)
+                -> ST s (BWTSeq a)
 magicInverseBWT DS.Empty = do
   bwtseqstackempty  <- emptySTBWTSeq
   bwtseqstackemptyr <- readSTRef bwtseqstackempty
@@ -211,8 +215,8 @@ magicInverseBWT xs       = do
 
 -- | Simple yet efficient implementation of converting a given string
 -- into a BWT Matrix (the BWTMatrix type is a massiv array).
-createBWTMatrix :: String ->
-                   BWTMatrix
+createBWTMatrix :: String
+                -> BWTMatrix
 createBWTMatrix t =
   DMA.fromList (ParN 0) zippedffff :: Array BN Ix1 String
     where
