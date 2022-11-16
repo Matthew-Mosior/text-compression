@@ -43,3 +43,7 @@
 ## 0.1.0.10 -- 2022-11-15
 
 * Added Move-to-front transform (MTF) implementation.
+
+## 0.1.0.11 -- 2022-11-16
+
+* Adding more documentation for RLE and MTF implementations.

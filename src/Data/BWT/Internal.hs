@@ -76,7 +76,7 @@ newtype BWT a = BWT (Seq (Maybe a))
 
 
 -- | The BWTMatrix data type.
--- Uses a massiv array internally.
+-- Uses a 'DMA.Array' internally.
 type BWTMatrix = DMA.Array BN Ix1 String
 
 {-------------------}
@@ -214,7 +214,7 @@ magicInverseBWT xs       = do
                  bwtcse
 
 -- | Simple yet efficient implementation of converting a given string
--- into a BWT Matrix (the BWTMatrix type is a massiv array).
+-- into a BWT Matrix (the BWTMatrix type is a 'DMA.Array').
 createBWTMatrix :: String
                 -> BWTMatrix
 createBWTMatrix t =

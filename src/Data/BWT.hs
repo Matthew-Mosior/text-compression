@@ -69,8 +69,8 @@ bytestringToBWT :: ByteString
                 -> BWT Word8
 bytestringToBWT = toBWT . BS.unpack
 
--- | A newtype to ensure you only uncompress a BWT created
--- from textToBWT, since [Word8] -> Text is partial.
+-- | A newtype to ensure you only uncompress a 'BWT' created
+-- from 'textToBWT', since ['Word8'] -> 'Text' is partial.
 newtype TextBWT = TextBWT (BWT Word8)
   deriving (Eq,Ord,Show,Read,Generic)
 
