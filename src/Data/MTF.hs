@@ -12,6 +12,23 @@
 -- Portability :  portable
 --
 -- = Move-to-front transform (MTF)
+--
+-- Most users will get the most mileage by first compressing using a 'BWT'
+-- on the initial 'ByteString' or 'Text' input before compressing to
+-- a 'MTFB' or 'MTFT'.
+--
+-- To do this, users can use the 'bytestringToBWTToMTFB' and 'bytestringToBWTToMTFT' functions,
+-- as well as the 'textToBWTToMTFB' and 'textToBWTToMTFT' functions.
+--
+-- The base functions for 'ByteString', 'bytestringToMTFB', 'bytestringToMTFT' can be used to
+-- convert a 'Seq' ('Maybe' 'ByteString') to a 'MTFB' and 'MTFT', respectively.
+--
+-- Likewise, the base functions for 'Text', 'textToMTFB' and 'textToMTFT' can be used to
+-- convert a 'Seq' ('Maybe' 'Text') to a 'MTFB' and 'MTFT' respectively.
+--
+-- There are various other lower-level functions for interacting with the MTF implementation on 'ByteString' and 'Text' as well.
+--
+-- @"Data.MTF.Internal"@ contains low-level, efficient, and stateful implementations of the MTF and Inverse MTF algorithms.
 
 
 module Data.MTF ( -- * To MTF functions
