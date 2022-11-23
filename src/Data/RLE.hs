@@ -13,14 +13,14 @@
 --
 -- = Run-length encoding (RLE)
 --
--- Most users will get the most mileage by first compressing using a 'BWT'
+-- Users will get the most mileage by first compressing to a 'BWT'
 -- on the initial 'ByteString' or 'Text' input before compressing to
 -- a 'RLEB' or 'RLET'.
 --
 -- To do this, users can use the 'bytestringToBWTToRLEB' and 'bytestringToBWTToRLET' functions,
 -- as well as the 'textToBWTToRLEB' and 'textToBWTToRLET' functions.
 --
--- The base functions for 'ByteString', 'bytestringToRLEB', 'bytestringToRLET' can be used to
+-- The base functions for 'ByteString', 'bytestringToRLEB' and 'bytestringToRLET' can be used to
 -- convert a 'Seq' ('Maybe' 'ByteString') to a 'RLEB' and 'RLET', respectively.
 --
 -- Likewise, the base functions for 'Text', 'textToRLEB' and 'textToRLET' can be used to
@@ -28,7 +28,7 @@
 --
 -- There are various other lower-level functions for interacting with the RLE implementation on 'ByteString' and 'Text' as well.
 --
--- @"Data.RLE.Internal"@ contains low-level, efficient, and stateful implementations of the RLE and Inverse RLE algorithms.
+-- @"Data.RLE.Internal"@ contains efficient and stateful implementations of the RLE and Inverse RLE algorithms.
 
 
 module Data.RLE ( -- * To RLE functions

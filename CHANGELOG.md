@@ -47,3 +47,7 @@
 ## 0.1.0.11 -- 2022-11-16
 
 * Adding more documentation for RLE and MTF implementations.
+
+## 0.1.0.12 -- 2022-11-23
+
+* Added Full-text Minute-space index (FM-index) implementation.
