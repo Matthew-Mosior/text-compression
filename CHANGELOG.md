@@ -59,3 +59,7 @@
 ## 0.1.0.14 -- 2022-11-23
 
 * Adding example FM-index output.
+
+## 0.1.0.15 -- 2022-11-23
+
+* Adding C[c] table for FM-index, and reworked FM-index implementation to include the C[c] table.
