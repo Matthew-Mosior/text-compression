@@ -53,7 +53,8 @@ import Data.ByteString.Internal()
 import Data.Foldable()
 import Data.List()
 import Data.Maybe()
-import Data.Sequence as DS (Seq(..),empty,(|>))
+import Data.Sequence as DS (Seq(..),ViewR(..),empty,(|>))
+import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
 import Data.Text as DText
 import GHC.Generics (Generic)
@@ -93,8 +94,10 @@ updateSTFMIndexSeqAB :: STFMIndexSeqB s (Seq (Maybe ByteString,Seq (Int,Int,Mayb
                      -> (Int,Int,Maybe ByteString)
                      -> ST s ()
 updateSTFMIndexSeqAB s e = do
-  (s2 DS.:|> s2fm) <- readSTRef s
-  writeSTRef s (s2 DS.|> (((\(a,_) -> a) s2fm),((\(_,b) -> b) s2fm) DS.|> e))
+  s2 <- readSTRef s
+  case viewr s2 of
+    EmptyR           -> pure ()
+    (s2h DS.:> s2fm) -> writeSTRef s (s2h DS.|> (((\(a,_) -> a) s2fm),((\(_,b) -> b) s2fm) DS.|> e))
 
 -- | State function to update 'FMIndexSeqB'
 -- with each step of the FMIndex.
@@ -226,8 +229,10 @@ updateSTFMIndexSeqAT :: STFMIndexSeqT s (Seq (Maybe Text,Seq (Int,Int,Maybe Text
                      -> (Int,Int,Maybe Text)
                      -> ST s ()
 updateSTFMIndexSeqAT s e = do
-  (s2 DS.:|> s2fm) <- readSTRef s
-  writeSTRef s (s2 DS.|> (((\(a,_) -> a) s2fm),((\(_,b) -> b) s2fm) DS.|> e))
+  s2 <- readSTRef s
+  case viewr s2 of
+    EmptyR           -> pure ()
+    (s2h DS.:> s2fm) -> writeSTRef s (s2h DS.|> (((\(a,_) -> a) s2fm),((\(_,b) -> b) s2fm) DS.|> e))
 
 -- | State function to update 'FMIndexSeqT'
 -- with each step of the FMIndex.
