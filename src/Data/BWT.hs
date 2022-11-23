@@ -16,7 +16,7 @@
 -- The two functions that most users will utilize are 'toBWT' and 'fromBWT'.
 -- There are auxilary function(s) inside of @"Data.BWT.Internal"@.
 --
--- The helper functions for ByteString, 'bytestringToBWT', 'bytestringFromWord8BWT' , 'bytestringFromByteStringBWT' and Text, 'textToBWT' and 'textFromBWT' should help for common use cases.
+-- The helper functions for ByteString, 'bytestringToBWT', 'bytestringFromWord8BWT', 'bytestringFromByteStringBWT' and Text, 'textToBWT' and 'textFromBWT' should help for common use cases.
 --
 -- @"Data.BWT.Internal"@ also has the function 'createBWTMatrix', which can be useful as well, although not used by either 'toBWT' or 'fromBWT'.
 

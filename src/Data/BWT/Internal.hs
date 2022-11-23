@@ -36,7 +36,7 @@
 -- The implementation of the BWT relies upon 'DS.Seq' provided
 -- by the [containers](https://hackage.haskell.org/package/containers).
 --
--- The internal 'BWTMatrix' data type relies upon the [massiv](https://hackage.haskell.org/package/massiv) package.
+-- The internal 'BWTMatrix' data type relies upon the 'DS.Seq' as well.
 
 
 module Data.BWT.Internal where
@@ -44,12 +44,10 @@ module Data.BWT.Internal where
 import Control.Monad as CM
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
-import Data.Foldable as DFold
-import Data.List as DL
+import Data.Foldable() 
+import Data.List()
 import Data.Maybe as DMaybe (fromJust,isNothing)
-import Data.Sequence as DS (Seq(..),empty,findIndexL,fromList,length,index,inits,null,singleton,tails,unstableSortBy,unstableSortOn,zip,(><),(|>),(<|))
-import Data.Massiv.Array as DMA
-import Data.Massiv.Core()
+import Data.Sequence as DS (Seq(..),empty,findIndexL,fromList,length,index,inits,null,tails,unstableSortBy,unstableSortOn,zip,(><),(|>),(<|))
 import Data.STRef as DSTR
 import GHC.Generics
 import Prelude as P
@@ -63,7 +61,7 @@ data Suffix a = Suffix { suffixindex    :: Int
                        , suffixstartpos :: Int
                        , suffix         :: Maybe (Seq a)
                        }
-  deriving (Show,Read,Eq,Ord,Generic)
+  deriving (Eq,Ord,Show,Read,Generic)
 
 -- | The SuffixArray data type.
 -- Uses 'DS.Seq' internally.
@@ -74,10 +72,10 @@ type SuffixArray a = Seq (Suffix a)
 newtype BWT a = BWT (Seq (Maybe a))
   deriving (Eq,Ord,Show,Read,Generic)
 
-
 -- | The BWTMatrix data type.
 -- Uses a 'DMA.Array' internally.
-type BWTMatrix = DMA.Array BN Ix1 String
+newtype BWTMatrix a = BWTMatrix (Seq (Seq (Maybe a)))
+  deriving (Eq,Ord,Show,Read,Generic)
 
 {-------------------}
 
@@ -214,27 +212,23 @@ magicInverseBWT xs       = do
                  bwtcse
 
 -- | Simple yet efficient implementation of converting a given string
--- into a BWT Matrix (the BWTMatrix type is a 'DMA.Array').
-createBWTMatrix :: String
-                -> BWTMatrix
+-- into a BWT Matrix (the BWTMatrix type is a 'DS.Seq' ('Maybe' a).
+createBWTMatrix :: Ord a
+                => [a]
+                -> BWTMatrix a
 createBWTMatrix t =
-  DMA.fromList (ParN 0) zippedffff :: Array BN Ix1 String
+  BWTMatrix (fmap (\(a,b) -> if | isNothing a
+                                -> Nothing DS.<|
+                                   (fmap (\x -> Just x) $ fromJust b)
+                                | isNothing b
+                                -> (fmap (\x -> Just x) $ fromJust a) DS.|>
+                                   Nothing
+                                | otherwise
+                                -> ((fmap (\x -> Just x) $ fromJust a) DS.|> Nothing) DS.><
+                                   (fmap (\x -> Just x) $ fromJust b)
+                  ) zippedf)
     where
-      zippedffff = DL.map DFold.toList $
-                   DL.map (\(a,b) -> if | isNothing a
-                                        -> DS.singleton '$' DS.><
-                                           fromJust b
-                                        | isNothing b
-                                        -> fromJust a DS.><
-                                           DS.singleton '$'
-                                        | otherwise
-                                        -> fromJust a       DS.><
-                                           DS.singleton '$' DS.><
-                                           fromJust b
-                          )
-                   zippedfff
-      zippedfff  = DFold.toList zippedff
-      zippedff   = DS.unstableSortBy (\(a,_) (c,_) -> compare a c)
+      zippedf    = DS.unstableSortBy (\(a,_) (c,_) -> compare a c)
                    zippedp
       zippedp    = DS.zip suffixesf prefixesf
       suffixesf  = fmap (\x -> if | DS.null x
