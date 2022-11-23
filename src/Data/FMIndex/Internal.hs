@@ -37,6 +37,33 @@
 -- The FM-index implementations rely heavily upon 'Seq' provided by the [containers](https://hackage.haskell.org/package/containers),
 -- 'STRef' and associated functions in the [stref](https://hackage.haskell.org/package/base-4.17.0.0/docs/Data-STRef.html) library,
 -- and 'runST' in the [Control.Monad.ST](https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html) library.
+--
+-- = Example FM-index Output
+--
+-- The below example is taken from [this](https://en.wikipedia.org/wiki/FM-index) wikipedia page.
+--
+-- FM-index output of the Burrows-Wheeler transform of the input "abracadabra" -> "ard$rcaaaabb"
+--
+--
+-- Occ(c,k) of "ard$rcaaaabb"
+--
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- |   | a | r | d | $ | r | c | a | a | a | a  | b  | b  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- |   | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 |
+-- +===+===+===+===+===+===+===+===+===+===+====+====+====+
+-- | $ | 0 | 0 | 0 | 1 | 1 | 1 | 1 | 1 | 1 | 1  | 1  | 1  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- | a | 1 | 1 | 1 | 1 | 1 | 1 | 2 | 3 | 4 | 5  | 5  | 5  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- | b | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0  | 1  | 2  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- | c | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 1 | 1  | 1  | 1  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- | d | 0 | 0 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1  | 1  | 1  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+-- | r | 0 | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2  | 2  | 2  |
+-- +---+---+---+---+---+---+---+---+---+---+----+----+----+
 
 
 module Data.FMIndex.Internal where
@@ -81,8 +108,6 @@ type PBFMIndexSeqB = Seq (Maybe ByteString)
 
 -- | Abstract 'FMIndexSeqB' type utilizing a 'Seq'.
 -- (c,(indexofinputcurrentelement,Occ(c,k),inputcurrentelement))
--- Please see [this](https://en.wikipedia.org/wiki/FM-index)
--- for an explanation of the above abbreviations.
 type FMIndexSeqB = Seq (Maybe ByteString,Seq (Int,Int,Maybe ByteString))
 
 -- | Abstract data type representing a 'FMIndexSeqB' in the (strict) ST monad.
@@ -216,8 +241,6 @@ type PTFMIndexSeqT = Seq (Maybe Text)
 
 -- | Abstract 'FMIndexSeqT' type utilizing a 'Seq'.
 -- (c,(indexofinputcurrentelement,Occ(c,k),inputcurrentelement))
--- Please see [this](https://en.wikipedia.org/wiki/FM-index)
--- for an explanation of the above abbreviations.
 type FMIndexSeqT = Seq (Maybe Text,Seq (Int,Int,Maybe Text))
 
 -- | Abstract data type representing a 'FMIndexSeqT' in the (strict) ST monad.
