@@ -51,3 +51,7 @@
 ## 0.1.0.12 -- 2022-11-23
 
 * Added Full-text Minute-space index (FM-index) implementation.
+
+## 0.1.0.13 -- 2022-11-23
+
+* Bug fixes to FM-index STRef functions.
