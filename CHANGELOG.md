@@ -55,3 +55,7 @@
 ## 0.1.0.13 -- 2022-11-23
 
 * Bug fixes to FM-index STRef functions.
+
+## 0.1.0.14 -- 2022-11-23
+
+* Adding example FM-index output.
