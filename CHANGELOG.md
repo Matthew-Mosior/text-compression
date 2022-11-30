@@ -38,7 +38,7 @@
 
 ## 0.1.0.9 -- 2022-11-12
 
-* Switching back to sequences for maintainability (for now).
+* Switched back to sequences for maintainability (for now).
 
 ## 0.1.0.10 -- 2022-11-15
 
@@ -58,8 +58,13 @@
 
 ## 0.1.0.14 -- 2022-11-23
 
-* Adding example FM-index output.
+* Added example FM-index output.
 
 ## 0.1.0.15 -- 2022-11-23
 
-* Adding C[c] table for FM-index, and reworked FM-index implementation to include the C[c] table.
+* Added C[c] table for FM-index, and reworked FM-index implementation to include the C[c] table.
+
+## 0.1.0.16 -- 2022-11-28
+
+* Added FM-index count operation and updated FM-index example text.
+* Added contents to all internal modules.

@@ -38,7 +38,60 @@
 -- and 'runST' in the [Control.Monad.ST](https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html) library.
 
 
-module Data.MTF.Internal where
+module Data.MTF.Internal ( -- * Base MTF types
+                           MTFB(..),
+                           MTFT(..),
+                           -- * Auxiliary functions
+                           nubSeq',
+                           -- * To MTF (ByteString) functions
+                           PBMTFSeqB,
+                           MTFLSSeqB,
+                           STMTFLSSeqB,
+                           initializeSTMTFLSSeqB,
+                           updateSTMTFLSSeqB,
+                           emptySTMTFLSSeqB,
+                           STMTFILB,
+                           loadSTMTFILB,
+                           emptySTMTFILB,
+                           STMTFCounterB,
+                           updateSTMTFCounterB,
+                           emptySTMTFCounterB,
+                           seqToMTFB,
+                           -- * To MTF (Text) functions
+                           PTMTFSeqT,
+                           MTFLSSeqT,
+                           STMTFLSSeqT,
+                           initializeSTMTFLSSeqT,
+                           updateSTMTFLSSeqT,
+                           emptySTMTFLSSeqT,
+                           STMTFILT,
+                           loadSTMTFILT,
+                           emptySTMTFILT,
+                           STMTFCounterT,
+                           updateSTMTFCounterT,
+                           emptySTMTFCounterT,
+                           seqToMTFT,
+                           -- * From MTF (ByteString) functions
+                           FMTFSeqB,
+                           FSTMTFSeqB,
+                           updateFSTMTFSeqB,
+                           emptyFSTMTFSeqB,
+                           FSTMTFILB,
+                           loadFSTMTFILB,
+                           updateFSTMTFILB,
+                           emptyFSTMTFILB,
+                           seqFromMTFB, 
+                           -- * From MTF (Text) functions
+                           FMTFSeqT,
+                           FSTMTFSeqT,
+                           updateFSTMTFSeqT,
+                           emptyFSTMTFSeqT,
+                           FSTMTFILT,
+                           loadFSTMTFILT,
+                           updateFSTMTFILT,
+                           emptyFSTMTFILT,
+                           seqFromMTFT
+                         ) where
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST

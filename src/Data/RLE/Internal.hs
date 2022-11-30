@@ -38,7 +38,46 @@
 -- and 'runST' in the [Control.Monad.ST](https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html) library.
 
 
-module Data.RLE.Internal where
+module Data.RLE.Internal ( -- * Base RLE types
+                           RLEB(..),
+                           RLET(..),
+                           -- * To RLE (ByteString) functions
+                           RLESeqB,
+                           STRLESeqB,
+                           pushSTRLESeqB,
+                           emptySTRLESeqB,
+                           STRLETempB,
+                           updateSTRLETempB,
+                           emptySTRLETempB,
+                           STRLECounterB,
+                           updateSTRLECounterB,
+                           emptySTRLECounterB,
+                           seqToRLEB,
+                           -- * To RLE (Text) functions
+                           RLESeqT,
+                           STRLESeqT,
+                           pushSTRLESeqT,
+                           emptySTRLESeqT,
+                           STRLETempT,
+                           updateSTRLETempT,
+                           emptySTRLETempT,
+                           STRLECounterT,
+                           updateSTRLECounterT,
+                           emptySTRLECounterT,
+                           seqToRLET,
+                           -- * From RLE (ByteString) functions
+                           FRLESeqB,
+                           FSTRLESeqB,
+                           pushFSTRLESeqB,
+                           emptyFSTRLESeqB,
+                           seqFromRLEB,
+                           -- * From RLE (Text) functions
+                           FRLESeqT,
+                           FSTRLESeqT,
+                           pushFSTRLESeqT,
+                           emptyFSTRLESeqT,
+                           seqFromRLET
+                         ) where
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST

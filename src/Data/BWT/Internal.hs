@@ -39,7 +39,27 @@
 -- The internal 'BWTMatrix' data type relies upon the 'DS.Seq' as well.
 
 
-module Data.BWT.Internal where
+module Data.BWT.Internal ( -- * Base BWT types
+                           Suffix(..),
+                           SuffixArray,
+                           BWT(..),
+                           BWTMatrix(..),
+                           -- * To BWT functions
+                           saToBWT,
+                           createSuffixArray,
+                           -- * From BWT functions
+                           sortTB,
+                           BWTSeq,
+                           STBWTSeq,
+                           pushSTBWTSeq,
+                           emptySTBWTSeq,
+                           STBWTCounter,
+                           updateSTBWTCounter,
+                           emptySTBWTCounter,
+                           magicInverseBWT,
+                           -- * Create BWT Matrix function
+                           createBWTMatrix 
+                         ) where
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
@@ -211,6 +231,11 @@ magicInverseBWT xs       = do
                  bwtcsf
                  bwtcse
 
+{--------------------}
+
+
+{-Create BWT Matrix function.-}
+
 -- | Simple yet efficient implementation of converting a given string
 -- into a BWT Matrix (the BWTMatrix type is a 'DS.Seq' ('Maybe' a).
 createBWTMatrix :: Ord a
@@ -247,4 +272,4 @@ createBWTMatrix t =
       prefixes   = DS.inits tseq
       tseq       = DS.fromList t
 
-{--------------------}
+{-----------------------------}
