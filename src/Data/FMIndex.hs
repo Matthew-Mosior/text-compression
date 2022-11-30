@@ -28,6 +28,13 @@
 --
 -- There are various other lower-level functions for interacting with the FMIndex implementation on 'ByteString' and 'Text' as well.
 --
+-- = Operations
+--
+-- The count operation is supported by the 'countFMIndexB' function for 'ByteString's
+-- and the 'countFMIndexT' function for 'Text'.
+--
+-- = Internal
+--
 -- @"Data.FMIndex.Internal"@ contains efficient and stateful implementations of the FMIndex and Inverse FMIndex algorithms.
 
 
@@ -56,7 +63,10 @@ module Data.FMIndex ( -- * To FMIndex functions
                       textFromFMIndexB,
                       bytestringFromFMIndexB,
                       textFromFMIndexT,
-                      bytestringFromFMIndexT
+                      bytestringFromFMIndexT,
+                      -- * Count operations
+                      bytestringFMIndexCount,
+                      textFMIndexCount
                     ) where
 
 import Data.BWT
@@ -67,11 +77,11 @@ import Control.Monad()
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS
-import Data.ByteString.Char8()
+import Data.ByteString.Char8 as BSC8 (singleton,unpack)
 import Data.Char()
 import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
-import Data.Sequence as DS (Seq(..),ViewL(..),viewl)
+import Data.Sequence as DS (Seq(..),ViewL(..),fromList,viewl)
 import Data.STRef()
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
@@ -481,3 +491,38 @@ bytestringFromFMIndexT xs                             = do
        ) originalb
 
 {-------------------------}
+
+
+{-Count operations.-}
+
+-- | Takes a pattern ('ByteString')
+-- and an input 'ByteString'
+-- and returns the number of occurences of the pattern
+-- in the input 'ByteString'.
+bytestringFMIndexCount :: ByteString
+                       -> ByteString
+                       -> CIntB
+bytestringFMIndexCount pat input = do
+  let bytestringfmindex = bytestringToBWTToFMIndexB input
+  let patternf          = fmap (BSC8.singleton) $
+                          DS.fromList           $
+                          BSC8.unpack pat
+  runST $ countFMIndexB patternf
+                        bytestringfmindex
+
+-- | Takes a pattern ('Text')
+-- and an input 'Text'
+-- and returns the number of occurences of the pattern
+-- in the input 'Text'.
+textFMIndexCount :: Text
+                 -> Text
+                 -> CIntT
+textFMIndexCount pat input = do
+  let textfmindex = textToBWTToFMIndexT input
+  let patternf    = fmap (DText.singleton) $
+                    DS.fromList           $
+                    DText.unpack pat
+  runST $ countFMIndexT patternf
+                        textfmindex
+
+{-------------------}

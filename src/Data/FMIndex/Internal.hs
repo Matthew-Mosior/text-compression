@@ -1,8 +1,9 @@
-{-# LANGUAGE MultiWayIf       #-}
-{-# LANGUAGE ViewPatterns     #-}
-{-# LANGUAGE Strict           #-}
-{-# LANGUAGE DeriveGeneric    #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE MultiWayIf             #-}
+{-# LANGUAGE ViewPatterns           #-}
+{-# LANGUAGE Strict                 #-}
+{-# LANGUAGE DeriveGeneric          #-}
+{-# LANGUAGE TypeApplications       #-}
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 
 -- |
@@ -42,11 +43,13 @@
 --
 -- The below example is taken from [this](https://en.wikipedia.org/wiki/FM-index) wikipedia page.
 --
--- Given the following input, "abracadabra":
+--
+--
+-- Given the following input, "abracadabra"
 --
 -- and
 --
--- Given the following Burrows-Wheeler matrix (BWM) of the input "abracadabra":
+-- the following Burrows-Wheeler matrix (BWM) of the input "abracadabra":
 --
 -- +----+---+---------------------------------------+---+
 -- | I  | F |                                       | L |
@@ -107,9 +110,114 @@
 -- +---+---+---+---+---+---+---+---+---+---+----+----+----+
 -- | r | 0 | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 2 | 2  | 2  | 2  |
 -- +---+---+---+---+---+---+---+---+---+---+----+----+----+
+--
+--
+--
+-- Keep in mind that the __$__ is translated into a __Nothing__.
 
 
-module Data.FMIndex.Internal where
+module Data.FMIndex.Internal ( -- * Base FM-index types
+                               FMIndexB(..),
+                               FMIndexT(..),
+                               OccCKB(..),
+                               OccCKT(..),
+                               CcB(..),
+                               CcT(..),
+                               CB(..),
+                               CT(..),
+                               -- * To OccCK (ByteString) functions
+                               PBOccCKSeqB,
+                               OccCKSeqB,
+                               STOccCKSeqB,
+                               updateSTOccCKSeqAB,
+                               updateSTOccCKSeqBB,
+                               emptySTOccCKSeqB,
+                               STOccCKILB,
+                               loadSTOccCKILB,
+                               emptySTOccCKILB,
+                               STOccCKCounterB,
+                               updateSTOccCKCounterB,
+                               emptySTOccCKCounterB,
+                               seqToOccCKB,              
+                               -- * To OccCK (Text) functions
+                               PTOccCKSeqT,
+                               OccCKSeqT,
+                               STOccCKSeqT,
+                               updateSTOccCKSeqAT,
+                               updateSTOccCKSeqBT,
+                               emptySTOccCKSeqT,
+                               STOccCKILT,
+                               loadSTOccCKILT,
+                               emptySTOccCKILT,
+                               STOccCKCounterT,
+                               updateSTOccCKCounterT,
+                               emptySTOccCKCounterT,
+                               seqToOccCKT,
+                               -- * Cc (ByteString) functions
+                               PBCcSeqB,
+                               CcSeqB,
+                               STCcSeqB,
+                               updateSTCcSeqB,
+                               emptySTCcSeqB,
+                               STCcILB,
+                               loadSTCcILB,
+                               emptySTCcILB,
+                               STCcCounterB,
+                               updateSTCcCounterB,
+                               emptySTCcCounterB,
+                               seqToCcB,                                                              
+                               -- * Cc (Text) functions
+                               PTCcSeqT,
+                               CcSeqT,
+                               STCcSeqT,
+                               updateSTCcSeqT,
+                               emptySTCcSeqT,
+                               STCcILT,
+                               loadSTCcILT,
+                               emptySTCcILT,
+                               STCcCounterT,
+                               updateSTCcCounterT,
+                               emptySTCcCounterT,
+                               seqToCcT,
+                               -- * From FMIndex (ByteString) functions
+                               FFMIndexSeqB,
+                               seqFromFMIndexB,
+                               -- * From FMIndex (Text) functions
+                               FFMIndexSeqT,
+                               seqFromFMIndexT,
+                               -- * Count (ByteString) operation
+                               PBCPat,
+                               CIntB,
+                               STCBoolB,
+                               updateSTCBoolB,
+                               emptySTCBoolB,
+                               STCCounterB,
+                               updateSTCCounterB,
+                               emptySTCCounterB,
+                               STCCurrentStartB,
+                               updateSTCCurrentStartB,
+                               emptySTCCurrentStartB,
+                               STCCurrentEndB,
+                               updateSTCCurrentEndB,
+                               emptySTCCurrentEndB,
+                               countFMIndexB,
+                               -- * Count (Text) operation
+                               PTCPat,
+                               CIntT,
+                               STCBoolT,
+                               updateSTCBoolT,
+                               emptySTCBoolT,
+                               STCCounterT,
+                               updateSTCCounterT,
+                               emptySTCCounterT,
+                               STCCurrentStartT,
+                               updateSTCCurrentStartT,
+                               emptySTCCurrentStartT,
+                               STCCurrentEndT,
+                               updateSTCCurrentEndT,
+                               emptySTCCurrentEndT,
+                               countFMIndexT       
+                             ) where
 
 import Data.BWT.Internal()
 import Data.MTF.Internal
@@ -117,16 +225,16 @@ import Data.MTF.Internal
 import Control.Monad as CM
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
-import Data.ByteString as BS
+import Data.ByteString as BS hiding (count)
 import Data.ByteString.Char8()
 import Data.ByteString.Internal()
 import Data.Foldable()
 import Data.List()
 import Data.Maybe()
-import Data.Sequence as DS (Seq(..),ViewR(..),empty,(|>))
+import Data.Sequence as DS (Seq(..),ViewL(..),ViewR(..),empty,findIndexL,index,length,(|>))
 import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
-import Data.Text as DText
+import Data.Text as DText hiding (count)
 import GHC.Generics (Generic)
 import Prelude as P
 
@@ -155,6 +263,14 @@ newtype CcB = CcB (Seq (Int,Maybe ByteString))
 
 -- | Basic C[c] table ('Text') data type.
 newtype CcT = CcT (Seq (Int,Maybe Text))
+  deriving (Eq,Ord,Show,Read,Generic)
+
+-- | Basic count ('ByteString') operation data type.
+newtype CB = CB (Maybe Int)
+  deriving (Eq,Ord,Show,Read,Generic)
+
+-- | Basic count ('Text') operation data type.
+newtype CT = CT (Maybe Int)
   deriving (Eq,Ord,Show,Read,Generic)
 
 {-------------------}
@@ -214,8 +330,8 @@ type STOccCKCounterB s a = STRef s Int
 
 -- | State function to update 'STOccCKCounterB'.
 updateSTOccCKCounterB :: STOccCKCounterB s Int
-                        -> Int
-                        -> ST s ()
+                      -> Int
+                      -> ST s ()
 updateSTOccCKCounterB s e = writeSTRef s e
 
 -- | State function to create empty 'STOccCKCounterB' type.
@@ -672,5 +788,345 @@ seqFromFMIndexT xs                             = do
       iFFMIndexT DS.Empty         = DS.Empty
       iFFMIndexT ((_,b) DS.:<| _) =
         fmap (\(_,_,e) -> e) b
+
+{-------------------------------}
+
+
+{-Count (ByteString) operation.-}
+
+-- | Abstract 'PBCPat' type utilizing a 'Seq'.
+type PBCPat = Seq ByteString
+
+-- | Abstract 'CIntB' type utilizing an 'Int'.
+type CIntB = Maybe Int
+
+-- | Abstract 'STCBoolB' type utilizing a 'Bool'.
+type STCBoolB s a = STRef s Bool
+
+-- | State function to update 'STCBoolB' in the (strict) ST monad.
+updateSTCBoolB :: STCBoolB s Bool
+               -> Bool
+               -> ST s ()
+updateSTCBoolB s e = writeSTRef s e
+
+-- | State function to create empty 'STCBoolB' type.
+emptySTCBoolB :: ST s (STCBoolB s Bool)
+emptySTCBoolB = newSTRef False
+
+-- | Abstract data type representing a 'STCCounterB' in the (strict) ST monad.
+type STCCounterB s a = STRef s Int
+
+-- | State function to update 'STCCounterB'
+updateSTCCounterB :: STCCounterB s Int
+                  -> Int
+                  -> ST s ()
+updateSTCCounterB s e = writeSTRef s e
+
+-- | State function to create empty 'STCCounterB' type.
+emptySTCCounterB :: ST s (STCCounterB s Int)
+emptySTCCounterB = newSTRef 0
+
+-- | Abstract 'STCCurrentStartB' type utilizing a 'Seq'.
+type STCCurrentStartB s a = STRef s Int
+
+-- | State function to update 'STCCurrentStartB'.
+updateSTCCurrentStartB :: STCCurrentStartB s Int
+                       -> Int
+                       -> ST s ()
+updateSTCCurrentStartB s e = writeSTRef s e
+
+-- | State function to create empty 'STCCurrentStartB' type.
+emptySTCCurrentStartB :: ST s (STCCurrentStartB s Int)
+emptySTCCurrentStartB = newSTRef (-1)
+
+-- | Abstract 'STCCurrentEndB' type utilizing a 'Seq'.
+type STCCurrentEndB s a = STRef s Int
+
+-- | State function to update 'STCCurrentEndB'.
+updateSTCCurrentEndB :: STCCurrentEndB s Int
+                     -> Int
+                     -> ST s ()
+updateSTCCurrentEndB s e = writeSTRef s e
+
+-- | State function to create empty 'STCCurrentEndB' type.
+emptySTCCurrentEndB :: ST s (STCCurrentEndB s Int)
+emptySTCCurrentEndB = newSTRef (-1)
+
+-- | Count operation on a 'FMIndexB'.
+-- This operation takes a pattern ('Seq' 'ByteString')
+-- and returns the number of occurences of that pattern
+-- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
+countFMIndexB :: PBCPat
+              -> FMIndexB
+              -> ST s CIntB 
+countFMIndexB DS.Empty _                              = return Nothing
+countFMIndexB _        (FMIndexB (CcB DS.Empty,_))    = return Nothing
+countFMIndexB _        (FMIndexB (_,OccCKB DS.Empty)) = return Nothing
+countFMIndexB xs       ys                             = do
+  bccounter      <- emptySTCCounterB
+  bcbool         <- emptySTCBoolB
+  bccurrentstart <- emptySTCCurrentStartB
+  bccurrentend   <- emptySTCCurrentEndB
+  iCB xs
+      ys
+      bccounter
+      bcbool
+      bccurrentstart
+      bccurrentend
+  cbccurrentstart <- readSTRef bccurrentstart
+  cbccurrentend   <- readSTRef bccurrentend
+  cbcbool         <- readSTRef bcbool
+  let count = if | (cbccurrentstart == (-1) && cbccurrentend == (-1)) ||
+                   ((cbccurrentend - cbccurrentstart) + 1) == 0       ||
+                   cbcbool
+                 -> Nothing 
+                 | otherwise
+                 -> Just ((cbccurrentend - cbccurrentstart) + 1)
+  return count
+    where
+      iCB DS.Empty      _  _   _   _    _    = pure ()
+      iCB (as DS.:|> a) bs bcc bcb bccs bcce = do
+        let ccbbs = (\(CcB b) -> b) $
+                    (\(a,_) -> a)   $
+                    (\(FMIndexB b) -> b) bs
+        let coccckbs = (\(OccCKB b) -> b) $
+                       (\(_,b) -> b)      $
+                       (\(FMIndexB b) -> b) bs
+        cbcc <- readSTRef bcc
+        cbccs <- readSTRef bccs
+        cbcce <- readSTRef bcce
+        if | cbccs > cbcce
+           -> do updateSTCBoolB bcb
+                                True
+                 pure ()
+           | otherwise
+           -> if | cbcc == 0
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) ccbbs of
+                         Nothing     -> pure () 
+                         Just bindex -> do if | bindex == (DS.length ccbbs) - 1
+                                              -> do let istart = (fst $ DS.index ccbbs bindex) + 1
+                                                    let iend   = case viewl coccckbs of
+                                                                   EmptyL      -> (-1)
+                                                                   (x DS.:< _) -> DS.length $
+                                                                                  snd x 
+                                                    updateSTCCurrentStartB bccs
+                                                                           istart
+                                                    updateSTCCurrentEndB bcce
+                                                                         iend
+                                                    updateSTCCounterB bcc
+                                                                      1
+                                                    iCB as
+                                                        bs
+                                                        bcc
+                                                        bcb
+                                                        bccs
+                                                        bcce 
+                                              | otherwise
+                                              -> do let istart = (fst $ DS.index ccbbs bindex) + 1
+                                                    let iend   = fst $ DS.index ccbbs (bindex + 1) 
+                                                    updateSTCCurrentStartB bccs
+                                                                           istart
+                                                    updateSTCCurrentEndB bcce
+                                                                         iend
+                                                    updateSTCCounterB bcc
+                                                                      1
+                                                    iCB as
+                                                        bs
+                                                        bcc
+                                                        bcb
+                                                        bccs
+                                                        bcce
+                 | otherwise
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) ccbbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do case DS.findIndexL (\(e,_) -> e == Just a) coccckbs of
+                                             Nothing     -> pure ()
+                                             Just cindex -> do let istart = (fst $ DS.index ccbbs bindex)                               +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckbs cindex) (cbccs - 1 - 1)) +
+                                                                            1
+                                                               let iend   = (fst $ DS.index ccbbs bindex) +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckbs cindex) (cbcce - 1))
+                                                               updateSTCCurrentStartB bccs
+                                                                                      istart
+                                                               updateSTCCurrentEndB bcce
+                                                                                    iend
+                                                               iCB as
+                                                                   bs
+                                                                   bcc
+                                                                   bcb
+                                                                   bccs
+                                                                   bcce
+
+{-------------------------------}
+
+
+{-Count (Text) operation.-}
+
+-- | Abstract 'PTCPat' type utilizing a 'Seq'.
+type PTCPat = Seq Text
+
+-- | Abstract 'CIntT' type utilizing an 'Int'.
+type CIntT = Maybe Int
+
+-- | Abstract 'STCBoolT' type utilizing a 'Bool'.
+type STCBoolT s a = STRef s Bool
+
+-- | State function to update 'STCBoolT' in the (strict) ST monad.
+updateSTCBoolT :: STCBoolT s Bool
+               -> Bool
+               -> ST s ()
+updateSTCBoolT s e = writeSTRef s e
+
+-- | State function to create empty 'STCBoolT' type.
+emptySTCBoolT :: ST s (STCBoolT s Bool)
+emptySTCBoolT = newSTRef False
+
+-- | Abstract data type representing a 'STCCounterT' in the (strict) ST monad.
+type STCCounterT s a = STRef s Int
+
+-- | State function to update 'STCCounterT'
+updateSTCCounterT :: STCCounterT s Int
+                  -> Int
+                  -> ST s ()
+updateSTCCounterT s e = writeSTRef s e
+
+-- | State function to create empty 'STCCounterT' type.
+emptySTCCounterT :: ST s (STCCounterT s Int)
+emptySTCCounterT = newSTRef 0
+
+-- | Abstract 'STCCurrentStartT' type utilizing a 'Seq'.
+type STCCurrentStartT s a = STRef s Int
+
+-- | State function to update 'STCCurrentStartT'.
+updateSTCCurrentStartT :: STCCurrentStartT s Int
+                       -> Int
+                       -> ST s ()
+updateSTCCurrentStartT s e = writeSTRef s e
+
+-- | State function to create empty 'STCCurrentStartT' type.
+emptySTCCurrentStartT :: ST s (STCCurrentStartT s Int)
+emptySTCCurrentStartT = newSTRef (-1)
+
+-- | Abstract 'STCCurrentEndT' type utilizing a 'Seq'.
+type STCCurrentEndT s a = STRef s Int
+
+-- | State function to update 'STCCurrentEndT'.
+updateSTCCurrentEndT :: STCCurrentEndT s Int
+                     -> Int
+                     -> ST s ()
+updateSTCCurrentEndT s e = writeSTRef s e
+
+-- | State function to create empty 'STCCurrentEndT' type.
+emptySTCCurrentEndT :: ST s (STCCurrentEndT s Int)
+emptySTCCurrentEndT = newSTRef (-1)
+
+-- | Count operation on a 'FMIndexT'.
+-- This operation takes a pattern ('Seq' 'Text')
+-- and returns the number of occurences of that pattern
+-- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
+countFMIndexT :: PTCPat
+              -> FMIndexT
+              -> ST s CIntT
+countFMIndexT DS.Empty _                              = return Nothing
+countFMIndexT _        (FMIndexT (CcT DS.Empty,_))    = return Nothing
+countFMIndexT _        (FMIndexT (_,OccCKT DS.Empty)) = return Nothing
+countFMIndexT xs       ys                             = do
+  tccounter      <- emptySTCCounterT
+  tcbool         <- emptySTCBoolT
+  tccurrentstart <- emptySTCCurrentStartT
+  tccurrentend   <- emptySTCCurrentEndT
+  iCT xs
+      ys
+      tccounter
+      tcbool
+      tccurrentstart
+      tccurrentend
+  ctccurrentstart <- readSTRef tccurrentstart
+  ctccurrentend   <- readSTRef tccurrentend
+  ctcbool         <- readSTRef tcbool
+  let count = if | (ctccurrentstart == (-1) && ctccurrentend == (-1)) ||
+                   ((ctccurrentend - ctccurrentstart) + 1) == 0       ||
+                   ctcbool
+                 -> Nothing
+                 | otherwise
+                 -> Just ((ctccurrentend - ctccurrentstart) + 1)
+  return count
+    where
+      iCT DS.Empty      _  _   _   _    _    = pure ()
+      iCT (as DS.:|> a) bs tcc tcb tccs tcce = do
+        let cctbs = (\(CcT t) -> t) $
+                    (\(a,_) -> a)   $
+                    (\(FMIndexT t) -> t) bs
+        let coccckts = (\(OccCKT t) -> t) $
+                       (\(_,b) -> b)      $
+                       (\(FMIndexT t) -> t) bs
+        ctcc <- readSTRef tcc
+        ctccs <- readSTRef tccs
+        ctcce <- readSTRef tcce
+        if | ctccs > ctcce
+           -> do updateSTCBoolT tcb
+                                True
+                 pure ()
+           | otherwise
+           -> if | ctcc == 0
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) cctbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do if | bindex == (DS.length cctbs) - 1
+                                              -> do let istart = (fst $ DS.index cctbs bindex) + 1
+                                                    let iend   = case viewl coccckts of
+                                                                   EmptyL      -> (-1)
+                                                                   (x DS.:< _) -> DS.length $
+                                                                                  snd x
+                                                    updateSTCCurrentStartT tccs
+                                                                           istart
+                                                    updateSTCCurrentEndT tcce
+                                                                         iend
+                                                    updateSTCCounterT tcc
+                                                                      1
+                                                    iCT as
+                                                        bs
+                                                        tcc
+                                                        tcb
+                                                        tccs
+                                                        tcce
+                                              | otherwise
+                                              -> do let istart = (fst $ DS.index cctbs bindex) + 1
+                                                    let iend   = fst $ DS.index cctbs (bindex + 1)
+                                                    updateSTCCurrentStartT tccs
+                                                                           istart
+                                                    updateSTCCurrentEndT tcce
+                                                                         iend
+                                                    updateSTCCounterT tcc
+                                                                      1
+                                                    iCT as
+                                                        bs
+                                                        tcc
+                                                        tcb
+                                                        tccs
+                                                        tcce
+                 | otherwise
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) cctbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do case DS.findIndexL (\(e,_) -> e == Just a) coccckts of
+                                             Nothing     -> pure ()
+                                             Just cindex -> do let istart = (fst $ DS.index cctbs bindex)                               +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckts cindex) (ctccs - 1 - 1)) +
+                                                                            1
+                                                               let iend   = (fst $ DS.index cctbs bindex) +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckts cindex) (ctcce - 1))
+                                                               updateSTCCurrentStartT tccs
+                                                                                      istart
+                                                               updateSTCCurrentEndT tcce
+                                                                                    iend
+                                                               iCT as
+                                                                   bs
+                                                                   tcc
+                                                                   tcb
+                                                                   tccs
+                                                                   tcce
 
 {-------------------------------}
