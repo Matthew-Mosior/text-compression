@@ -68,3 +68,7 @@
 
 * Added FM-index count operation and updated FM-index example text.
 * Added contents to all internal modules.
+
+## 0.1.0.17 -- 2022-12-02
+
+* Added FM-index locate operation.

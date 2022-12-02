@@ -1,7 +1,8 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE MultiWayIf    #-}
-{-# LANGUAGE ViewPatterns  #-}
-{-# LANGUAGE Strict        #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE MultiWayIf        #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE ViewPatterns      #-}
+{-# LANGUAGE Strict            #-}
 
 
 -- |
@@ -28,10 +29,17 @@
 --
 -- There are various other lower-level functions for interacting with the FMIndex implementation on 'ByteString' and 'Text' as well.
 --
--- = Operations
+-- = Operation: Count
 --
--- The count operation is supported by the 'countFMIndexB' function for 'ByteString's
--- and the 'countFMIndexT' function for 'Text'.
+-- The count operation on 'ByteString', 'bytestringFMIndexCount', is implemented using the 'countFMIndexB' function.
+--
+-- The count operation on 'Text', 'textFMIndexCount', is implemented using the 'countFMIndexT' function.
+--
+-- = Operation: Locate
+--
+-- The locate operation on 'ByteString', 'bytestringFMIndexLocate', is implemented using the 'locateFMIndexB' function.
+--
+-- The locate operation on 'Text', 'textFMIndexLocate', is implemented using the 'locateFMIndexT' function.
 --
 -- = Internal
 --
@@ -66,7 +74,10 @@ module Data.FMIndex ( -- * To FMIndex functions
                       bytestringFromFMIndexT,
                       -- * Count operations
                       bytestringFMIndexCount,
-                      textFMIndexCount
+                      textFMIndexCount,
+                      -- * Locate operations
+                      bytestringFMIndexLocate,
+                      textFMIndexLocate
                     ) where
 
 import Data.BWT
@@ -77,11 +88,11 @@ import Control.Monad()
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS
-import Data.ByteString.Char8 as BSC8 (singleton,unpack)
+import Data.ByteString.Char8 as BSC8 (singleton,uncons,unpack)
 import Data.Char()
 import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
-import Data.Sequence as DS (Seq(..),ViewL(..),fromList,viewl)
+import Data.Sequence as DS (Seq(..),ViewL(..),fromList,index,viewl)
 import Data.STRef()
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
@@ -502,7 +513,9 @@ bytestringFromFMIndexT xs                             = do
 bytestringFMIndexCount :: ByteString
                        -> ByteString
                        -> CIntB
-bytestringFMIndexCount pat input = do
+bytestringFMIndexCount (BSC8.uncons -> Nothing) _                        = Nothing
+bytestringFMIndexCount _                        (BSC8.uncons -> Nothing) = Nothing
+bytestringFMIndexCount pat                      input                    = do
   let bytestringfmindex = bytestringToBWTToFMIndexB input
   let patternf          = fmap (BSC8.singleton) $
                           DS.fromList           $
@@ -517,12 +530,77 @@ bytestringFMIndexCount pat input = do
 textFMIndexCount :: Text
                  -> Text
                  -> CIntT
+textFMIndexCount ""  _     = Nothing
+textFMIndexCount _   ""    = Nothing
 textFMIndexCount pat input = do
   let textfmindex = textToBWTToFMIndexT input
   let patternf    = fmap (DText.singleton) $
-                    DS.fromList           $
+                    DS.fromList            $
                     DText.unpack pat
   runST $ countFMIndexT patternf
                         textfmindex
 
 {-------------------}
+
+
+{-Locate operations.-}
+
+-- | Takes a pattern ('ByteString')
+-- and an input 'ByteString'
+-- and returns the indexe(s) of occurences of the pattern
+-- in the input 'ByteString'.
+-- The output is not sorted.
+bytestringFMIndexLocate :: ByteString
+                        -> ByteString
+                        -> LIntB
+bytestringFMIndexLocate (BSC8.uncons -> Nothing) _                        = DS.Empty
+bytestringFMIndexLocate _                        (BSC8.uncons -> Nothing) = DS.Empty
+bytestringFMIndexLocate pat                      input                    = do
+  let bytestringsa      = createSuffixArray   $
+                          fmap (BS.singleton) $
+                          DS.fromList         $ 
+                          BS.unpack input
+  let bytestringfmindex = bytestringToBWTToFMIndexB input
+  let patternf          = fmap (BSC8.singleton) $
+                          DS.fromList           $
+                          BSC8.unpack pat
+  let indices           = runST $ locateFMIndexB patternf
+                                                 bytestringfmindex
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    suffixstartpos $
+                    DS.index bytestringsa ((fromJust x) - 1)
+       ) indices
+
+-- | Takes a pattern ('Text')
+-- and an input 'Text'
+-- and returns the indexe(s) of occurences of the pattern
+-- in the input 'Text'.
+-- The output is not sorted.
+textFMIndexLocate :: Text
+                  -> Text
+                  -> LIntT
+textFMIndexLocate ""  _     = DS.Empty
+textFMIndexLocate _   ""    = DS.Empty
+textFMIndexLocate pat input = do
+  let textsa      = createSuffixArray      $
+                    fmap (DText.singleton) $
+                    DS.fromList            $
+                    DText.unpack input
+  let textfmindex = textToBWTToFMIndexT input
+  let patternf    = fmap (DText.singleton) $
+                    DS.fromList            $
+                    DText.unpack pat
+  let indices     = runST $ locateFMIndexT patternf
+                                           textfmindex
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    suffixstartpos $
+                    DS.index textsa ((fromJust x) - 1)
+       ) indices
+
+{--------------------}

@@ -35,7 +35,7 @@
 -- [Full-text Minute-space index (FM-index)](https://en.wikipedia.org/wiki/FM-index)
 -- and the Inverse FM-index implementations, namely 'seqToOccCKB', 'seqToOccCKT', 'seqToCcB', 'seqToCcT', 'seqFromFMIndexB', and 'seqFromFMIndexT'.
 --
--- The FM-index implementations rely heavily upon 'Seq' provided by the [containers](https://hackage.haskell.org/package/containers),
+-- The FM-index implementations rely heavily upon 'Seq' provided by the [containers](https://hackage.haskell.org/package/containers) library,
 -- 'STRef' and associated functions in the [stref](https://hackage.haskell.org/package/base-4.17.0.0/docs/Data-STRef.html) library,
 -- and 'runST' in the [Control.Monad.ST](https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html) library.
 --
@@ -216,7 +216,39 @@ module Data.FMIndex.Internal ( -- * Base FM-index types
                                STCCurrentEndT,
                                updateSTCCurrentEndT,
                                emptySTCCurrentEndT,
-                               countFMIndexT       
+                               countFMIndexT,
+                               -- * Locate (ByteString) operation
+                               PBLPat,
+                               LIntB,
+                               STLBoolB,
+                               updateSTLBoolB,
+                               emptySTLBoolB,
+                               STLCounterB,
+                               updateSTLCounterB,
+                               emptySTLCounterB,
+                               STLCurrentStartB,
+                               updateSTLCurrentStartB,
+                               emptySTLCurrentStartB,
+                               STLCurrentEndB,
+                               updateSTLCurrentEndB,
+                               emptySTLCurrentEndB,
+                               locateFMIndexB,
+                               -- * Locate (Text) operation
+                               PTLPat,
+                               LIntT,
+                               STLBoolT,
+                               updateSTLBoolT,
+                               emptySTLBoolT,
+                               STLCounterT,
+                               updateSTLCounterT,
+                               emptySTLCounterT,
+                               STLCurrentStartT,
+                               updateSTLCurrentStartT,
+                               emptySTLCurrentStartT,
+                               STLCurrentEndT,
+                               updateSTLCurrentEndT,
+                               emptySTLCurrentEndT,
+                               locateFMIndexT
                              ) where
 
 import Data.BWT.Internal()
@@ -231,7 +263,7 @@ import Data.ByteString.Internal()
 import Data.Foldable()
 import Data.List()
 import Data.Maybe()
-import Data.Sequence as DS (Seq(..),ViewL(..),ViewR(..),empty,findIndexL,index,length,(|>))
+import Data.Sequence as DS (Seq(..),ViewL(..),ViewR(..),empty,findIndexL,fromList,index,length,(|>))
 import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
 import Data.Text as DText hiding (count)
@@ -1130,3 +1162,347 @@ countFMIndexT xs       ys                             = do
                                                                    tcce
 
 {-------------------------------}
+
+
+{-Locate (ByteString) operation.-}
+
+-- | Abstract 'PBLPat' type utilizing a 'Seq'.
+type PBLPat = Seq ByteString
+
+-- | Abstract 'LIntB' type utilizing an 'Int'.
+type LIntB = Seq (Maybe Int)
+
+-- | Abstract 'STLBoolB' type utilizing a 'Bool'.
+type STLBoolB s a = STRef s Bool
+
+-- | State function to update 'STLBoolB' in the (strict) ST monad.
+updateSTLBoolB :: STLBoolB s Bool
+               -> Bool
+               -> ST s ()
+updateSTLBoolB s e = writeSTRef s e
+
+-- | State function to create empty 'STLBoolB' type.
+emptySTLBoolB :: ST s (STLBoolB s Bool)
+emptySTLBoolB = newSTRef False
+
+-- | Abstract data type representing a 'STLCounterB' in the (strict) ST monad.
+type STLCounterB s a = STRef s Int
+
+-- | State function to update 'STLCounterB'
+updateSTLCounterB :: STLCounterB s Int
+                  -> Int
+                  -> ST s ()
+updateSTLCounterB s e = writeSTRef s e
+
+-- | State function to create empty 'STLCounterB' type.
+emptySTLCounterB :: ST s (STLCounterB s Int)
+emptySTLCounterB = newSTRef 0
+
+-- | Abstract 'STLCurrentStartB' type utilizing a 'Seq'.
+type STLCurrentStartB s a = STRef s Int
+
+-- | State function to update 'STLCurrentStartB'.
+updateSTLCurrentStartB :: STLCurrentStartB s Int
+                       -> Int
+                       -> ST s ()
+updateSTLCurrentStartB s e = writeSTRef s e
+
+-- | State function to create empty 'STLCurrentStartB' type.
+emptySTLCurrentStartB :: ST s (STLCurrentStartB s Int)
+emptySTLCurrentStartB = newSTRef (-1)
+
+-- | Abstract 'STLCurrentEndB' type utilizing a 'Seq'.
+type STLCurrentEndB s a = STRef s Int
+
+-- | State function to update 'STLCurrentEndB'.
+updateSTLCurrentEndB :: STLCurrentEndB s Int
+                     -> Int
+                     -> ST s ()
+updateSTLCurrentEndB s e = writeSTRef s e
+
+-- | State function to create empty 'STLCurrentEndB' type.
+emptySTLCurrentEndB :: ST s (STCCurrentEndB s Int)
+emptySTLCurrentEndB = newSTRef (-1)
+
+-- | Locate operation on a 'FMIndexB'.
+-- This operation takes a pattern ('Seq' 'ByteString')
+-- and returns the indexe(s) of occurences of that pattern
+-- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
+locateFMIndexB :: PBLPat
+               -> FMIndexB
+               -> ST s LIntB
+locateFMIndexB DS.Empty _                              = return DS.Empty
+locateFMIndexB _        (FMIndexB (CcB DS.Empty,_))    = return DS.Empty
+locateFMIndexB _        (FMIndexB (_,OccCKB DS.Empty)) = return DS.Empty 
+locateFMIndexB xs       ys                             = do
+  blcounter      <- emptySTLCounterB
+  blbool         <- emptySTLBoolB
+  blcurrentstart <- emptySTLCurrentStartB
+  blcurrentend   <- emptySTLCurrentEndB
+  iLB xs
+      ys
+      blcounter
+      blbool
+      blcurrentstart
+      blcurrentend
+  cblcurrentstart <- readSTRef blcurrentstart
+  cblcurrentend   <- readSTRef blcurrentend
+  cblbool         <- readSTRef blbool
+  let indexes = if | (cblcurrentstart == (-1) && cblcurrentend == (-1)) ||
+                     ((cblcurrentend - cblcurrentstart) + 1) == 0       ||
+                     cblbool
+                   -> DS.Empty
+                   | otherwise
+                   -> fmap Just   $
+                      DS.fromList $
+                      [cblcurrentstart..cblcurrentend]
+  return indexes
+    where
+      iLB DS.Empty      _  _   _   _    _    = pure ()
+      iLB (as DS.:|> a) bs blc blb blcs blce = do
+        let ccbbs = (\(CcB b) -> b) $
+                    (\(a,_) -> a)   $
+                    (\(FMIndexB b) -> b) bs
+        let coccckbs = (\(OccCKB b) -> b) $
+                       (\(_,b) -> b)      $
+                       (\(FMIndexB b) -> b) bs
+        cblc <- readSTRef blc
+        cblcs <- readSTRef blcs
+        cblce <- readSTRef blce
+        if | cblcs > cblce
+           -> do updateSTLBoolB blb
+                                True
+                 pure ()
+           | otherwise
+           -> if | cblc == 0
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) ccbbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do if | bindex == (DS.length ccbbs) - 1
+                                              -> do let istart = (fst $ DS.index ccbbs bindex) + 1
+                                                    let iend   = case viewl coccckbs of
+                                                                   EmptyL      -> (-1)
+                                                                   (x DS.:< _) -> DS.length $
+                                                                                  snd x
+                                                    updateSTLCurrentStartB blcs
+                                                                           istart
+                                                    updateSTLCurrentEndB blce
+                                                                         iend
+                                                    updateSTLCounterB blc
+                                                                      1
+                                                    iLB as
+                                                        bs
+                                                        blc
+                                                        blb
+                                                        blcs
+                                                        blce
+                                              | otherwise
+                                              -> do let istart = (fst $ DS.index ccbbs bindex) + 1
+                                                    let iend   = fst $ DS.index ccbbs (bindex + 1)
+                                                    updateSTLCurrentStartB blcs
+                                                                           istart
+                                                    updateSTLCurrentEndB blce
+                                                                         iend
+                                                    updateSTLCounterB blc
+                                                                      1
+                                                    iLB as
+                                                        bs
+                                                        blc
+                                                        blb
+                                                        blcs
+                                                        blce
+                 | otherwise
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) ccbbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do case DS.findIndexL (\(e,_) -> e == Just a) coccckbs of
+                                             Nothing     -> pure ()
+                                             Just cindex -> do let istart = (fst $ DS.index ccbbs bindex)                               +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckbs cindex) (cblcs - 1 - 1)) +
+                                                                            1
+                                                               let iend   = (fst $ DS.index ccbbs bindex) +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckbs cindex) (cblce - 1))
+                                                               updateSTLCurrentStartB blcs
+                                                                                      istart
+                                                               updateSTLCurrentEndB blce
+                                                                                    iend
+                                                               iLB as
+                                                                   bs
+                                                                   blc
+                                                                   blb
+                                                                   blcs
+                                                                   blce
+
+{--------------------------------}
+
+
+{-Locate (Text) operation.-}
+
+-- | Abstract 'PTLPat' type utilizing a 'Seq'.
+type PTLPat = Seq Text
+
+-- | Abstract 'LIntT' type utilizing an 'Int'.
+type LIntT = Seq (Maybe Int)
+
+-- | Abstract 'STLBoolT' type utilizing a 'Bool'.
+type STLBoolT s a = STRef s Bool
+
+-- | State function to update 'STLBoolT' in the (strict) ST monad.
+updateSTLBoolT :: STLBoolT s Bool
+               -> Bool
+               -> ST s ()
+updateSTLBoolT s e = writeSTRef s e
+
+-- | State function to create empty 'STLBoolT' type.
+emptySTLBoolT :: ST s (STLBoolT s Bool)
+emptySTLBoolT = newSTRef False
+
+-- | Abstract data type representing a 'STLCounterT' in the (strict) ST monad.
+type STLCounterT s a = STRef s Int
+
+-- | State function to update 'STLCounterT'
+updateSTLCounterT :: STLCounterT s Int
+                  -> Int
+                  -> ST s ()
+updateSTLCounterT s e = writeSTRef s e
+
+-- | State function to create empty 'STLCounterT' type.
+emptySTLCounterT :: ST s (STLCounterT s Int)
+emptySTLCounterT = newSTRef 0
+
+-- | Abstract 'STLCurrentStartT' type utilizing a 'Seq'.
+type STLCurrentStartT s a = STRef s Int
+
+-- | State function to update 'STLCurrentStartT'.
+updateSTLCurrentStartT :: STLCurrentStartT s Int
+                       -> Int
+                       -> ST s ()
+updateSTLCurrentStartT s e = writeSTRef s e
+
+-- | State function to create empty 'STLCurrentStartT' type.
+emptySTLCurrentStartT :: ST s (STLCurrentStartT s Int)
+emptySTLCurrentStartT = newSTRef (-1)
+
+-- | Abstract 'STLCurrentEndT' type utilizing a 'Seq'.
+type STLCurrentEndT s a = STRef s Int
+
+-- | State function to update 'STLCurrentEndT'.
+updateSTLCurrentEndT :: STLCurrentEndT s Int
+                     -> Int
+                     -> ST s ()
+updateSTLCurrentEndT s e = writeSTRef s e
+
+-- | State function to create empty 'STLCurrentEndT' type.
+emptySTLCurrentEndT :: ST s (STLCurrentEndT s Int)
+emptySTLCurrentEndT = newSTRef (-1)
+
+-- | Locate operation on a 'FMIndexT'.
+-- This operation takes a pattern ('Seq' 'Text')
+-- and returns the indexe(s) of occurences of that pattern
+-- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
+locateFMIndexT :: PTLPat
+               -> FMIndexT
+               -> ST s LIntT
+locateFMIndexT DS.Empty _                              = return DS.Empty
+locateFMIndexT _        (FMIndexT (CcT DS.Empty,_))    = return DS.Empty
+locateFMIndexT _        (FMIndexT (_,OccCKT DS.Empty)) = return DS.Empty
+locateFMIndexT xs       ys                             = do
+  tlcounter      <- emptySTLCounterT
+  tlbool         <- emptySTLBoolT
+  tlcurrentstart <- emptySTLCurrentStartT
+  tlcurrentend   <- emptySTLCurrentEndT
+  iLT xs
+      ys
+      tlcounter
+      tlbool
+      tlcurrentstart
+      tlcurrentend
+  ctlcurrentstart <- readSTRef tlcurrentstart
+  ctlcurrentend   <- readSTRef tlcurrentend
+  ctlbool         <- readSTRef tlbool
+  let indexes = if | (ctlcurrentstart == (-1) && ctlcurrentend == (-1)) ||
+                     ((ctlcurrentend - ctlcurrentstart) + 1) == 0       ||
+                     ctlbool
+                   -> DS.Empty
+                   | otherwise
+                   -> fmap Just   $
+                      DS.fromList $
+                      [ctlcurrentstart..ctlcurrentend]
+  return indexes
+    where
+      iLT DS.Empty      _  _   _   _    _    = pure ()
+      iLT (as DS.:|> a) bs tlc tlb tlcs tlce = do
+        let cctbs = (\(CcT t) -> t) $
+                    (\(a,_) -> a)   $
+                    (\(FMIndexT t) -> t) bs
+        let coccckts = (\(OccCKT t) -> t) $
+                       (\(_,b) -> b)      $
+                       (\(FMIndexT t) -> t) bs
+        ctlc <- readSTRef tlc
+        ctlcs <- readSTRef tlcs
+        ctlce <- readSTRef tlce
+        if | ctlcs > ctlce
+           -> do updateSTLBoolT tlb
+                                True
+                 pure ()
+           | otherwise
+           -> if | ctlc == 0
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) cctbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do if | bindex == (DS.length cctbs) - 1
+                                              -> do let istart = (fst $ DS.index cctbs bindex) + 1
+                                                    let iend   = case viewl coccckts of
+                                                                   EmptyL      -> (-1)
+                                                                   (x DS.:< _) -> DS.length $
+                                                                                  snd x
+                                                    updateSTLCurrentStartT tlcs
+                                                                           istart
+                                                    updateSTLCurrentEndT tlce
+                                                                         iend
+                                                    updateSTLCounterT tlc
+                                                                      1
+                                                    iLT as
+                                                        bs
+                                                        tlc
+                                                        tlb
+                                                        tlcs
+                                                        tlce
+                                              | otherwise
+                                              -> do let istart = (fst $ DS.index cctbs bindex) + 1
+                                                    let iend   = fst $ DS.index cctbs (bindex + 1)
+                                                    updateSTLCurrentStartT tlcs
+                                                                           istart
+                                                    updateSTLCurrentEndT tlce
+                                                                         iend
+                                                    updateSTLCounterT tlc
+                                                                      1
+                                                    iLT as
+                                                        bs
+                                                        tlc
+                                                        tlb
+                                                        tlcs
+                                                        tlce
+                 | otherwise
+                 -> do case DS.findIndexL (\(_,d) -> d == Just a) cctbs of
+                         Nothing     -> pure ()
+                         Just bindex -> do case DS.findIndexL (\(e,_) -> e == Just a) coccckts of
+                                             Nothing     -> pure ()
+                                             Just cindex -> do let istart = (fst $ DS.index cctbs bindex)                               +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckts cindex) (ctlcs - 1 - 1)) +
+                                                                            1
+                                                               let iend   = (fst $ DS.index cctbs bindex) +
+                                                                            ((\(_,b,_) -> b) $
+                                                                             DS.index (snd $ DS.index coccckts cindex) (ctlce - 1))
+                                                               updateSTCCurrentStartT tlcs
+                                                                                      istart
+                                                               updateSTCCurrentEndT tlce
+                                                                                    iend
+                                                               iLT as
+                                                                   bs
+                                                                   tlc
+                                                                   tlb
+                                                                   tlcs
+                                                                   tlce
+
+{--------------------------}
