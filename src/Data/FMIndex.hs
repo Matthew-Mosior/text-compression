@@ -77,7 +77,9 @@ module Data.FMIndex ( -- * To FMIndex functions
                       textFMIndexCount,
                       -- * Locate operations
                       bytestringFMIndexLocate,
-                      textFMIndexLocate
+                      bytestringPCFMIndexLocate,
+                      textFMIndexLocate,
+                      textPCFMIndexLocate
                     ) where
 
 import Data.BWT
@@ -560,12 +562,43 @@ bytestringFMIndexLocate pat                      input                    = do
                           fmap (BS.singleton) $
                           DS.fromList         $ 
                           BS.unpack input
-  let bytestringfmindex = bytestringToBWTToFMIndexB input
+  let bfmindex          = bytestringToBWTToFMIndexB input
   let patternf          = fmap (BSC8.singleton) $
                           DS.fromList           $
                           BSC8.unpack pat
   let indices           = runST $ locateFMIndexB patternf
-                                                 bytestringfmindex
+                                                 bfmindex
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    suffixstartpos $
+                    DS.index bytestringsa ((fromJust x) - 1)
+       ) indices
+
+-- | Takes a pattern ('ByteString'),
+-- an input ('ByteString')
+-- and a pre-computed 'FMIndexB' of the input 'ByteString'
+-- and returns the indexe(s) of occurences of the pattern
+-- using the pre-computed 'FMIndexB'
+-- in the input 'ByteString'.
+-- The output is not sorted.
+bytestringPCFMIndexLocate :: ByteString
+                          -> ByteString
+                          -> FMIndexB
+                          -> LIntB
+bytestringPCFMIndexLocate (BSC8.uncons -> Nothing) _                        _        = DS.Empty
+bytestringPCFMIndexLocate _                        (BSC8.uncons -> Nothing) _        = DS.Empty
+bytestringPCFMIndexLocate pat                      input                    bfmindex = do
+  let bytestringsa      = createSuffixArray   $
+                          fmap (BS.singleton) $
+                          DS.fromList         $
+                          BS.unpack input
+  let patternf          = fmap (BSC8.singleton) $
+                          DS.fromList           $
+                          BSC8.unpack pat
+  let indices           = runST $ locateFMIndexB patternf
+                                                 bfmindex
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise
@@ -589,12 +622,43 @@ textFMIndexLocate pat input = do
                     fmap (DText.singleton) $
                     DS.fromList            $
                     DText.unpack input
-  let textfmindex = textToBWTToFMIndexT input
+  let tfmindex    = textToBWTToFMIndexT input
   let patternf    = fmap (DText.singleton) $
                     DS.fromList            $
                     DText.unpack pat
   let indices     = runST $ locateFMIndexT patternf
-                                           textfmindex
+                                           tfmindex
+  fmap (\x -> if | isNothing x
+                 -> Nothing
+                 | otherwise
+                 -> Just           $
+                    suffixstartpos $
+                    DS.index textsa ((fromJust x) - 1)
+       ) indices
+
+-- | Takes a pattern ('Text'),
+-- an input ('Text')
+-- and a pre-computed 'FMIndexT' of the input 'Text
+-- and returns the indexe(s) of occurences of the pattern
+-- using the pre-computed 'FMIndexT'
+-- in the input 'Text'.
+-- The output is not sorted.
+textPCFMIndexLocate :: Text
+                    -> Text
+                    -> FMIndexT
+                    -> LIntT
+textPCFMIndexLocate ""  _     _        = DS.Empty
+textPCFMIndexLocate _   ""    _        = DS.Empty
+textPCFMIndexLocate pat input tfmindex = do
+  let textsa      = createSuffixArray      $
+                    fmap (DText.singleton) $
+                    DS.fromList            $
+                    DText.unpack input
+  let patternf    = fmap (DText.singleton) $
+                    DS.fromList            $
+                    DText.unpack pat
+  let indices     = runST $ locateFMIndexT patternf
+                                           tfmindex
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise
