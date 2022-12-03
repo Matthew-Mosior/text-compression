@@ -76,3 +76,11 @@
 ## 0.1.0.18 -- 2022-12-02
 
 * Added additional FM-index functionality for the locate operation.
+
+## 0.1.0.19 -- 2022-12-03
+
+* Reworked FM-index functions.
+
+## 0.1.0.20 -- 2022-12-03
+
+* Added missing date to 0.1.0.19 entry in changelog.
