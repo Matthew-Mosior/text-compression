@@ -84,3 +84,7 @@
 ## 0.1.0.20 -- 2022-12-03
 
 * Added missing date to 0.1.0.19 entry in changelog.
+
+## 0.1.0.21 -- 2022-12-03
+
+* Optimized locate and count functions.
