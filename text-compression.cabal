@@ -20,7 +20,7 @@ name:               text-compression
 -- PVP summary:     +-+------- breaking API changes
 --                  | | +----- non-breaking API additions
 --                  | | | +--- code changes with no API change
-version:            0.1.0.21
+version:            0.1.0.22
 
 -- A short (one-line) description of the package.
 synopsis:           A text compression library.
@@ -84,6 +84,7 @@ library
                       bytestring >= 0.11.3 && < 0.12,
                       containers >= 0.6.5 && < 0.7,
                       mtl        >= 2.2.2 && < 2.3,
+                      parallel   >= 3.2.2 && < 3.3,
                       text       >= 1.2.5 && < 1.3
 
     -- Directories containing source files.

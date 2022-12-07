@@ -88,3 +88,7 @@
 ## 0.1.0.21 -- 2022-12-03
 
 * Optimized locate and count functions.
+
+## 0.1.0.22 -- 2022-12-07
+
+* Added parallel implementation for locate and count functions. Renamed serial version by adding 'S' at the end.

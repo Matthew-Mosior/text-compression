@@ -31,15 +31,21 @@
 --
 -- = Operation: Count
 --
--- The count operation on 'ByteString', 'bytestringFMIndexCount', is implemented using the 'countFMIndexB' function.
+-- The count operation is supported both serial, 'bytestringFMIndexCountS' and 'textFMIndexCountS'
+-- and parallel, 'bytestringFMIndexCountP' and 'textFMIndexCountP' , implementations.
 --
--- The count operation on 'Text', 'textFMIndexCount', is implemented using the 'countFMIndexT' function.
+-- The count operations on 'ByteString', 'bytestringFMIndexCountS' and 'bytestringFMIndexCountP', are implemented using the 'countFMIndexB' function.
+--
+-- The count operations on 'Text', 'textFMIndexCountS' and 'textFMIndexCountP', are implemented using the 'countFMIndexT' function.
 --
 -- = Operation: Locate
 --
--- The locate operation on 'ByteString', 'bytestringFMIndexLocate', is implemented using the 'locateFMIndexB' function.
+-- The locate operation is supported both serial, 'bytestringFMIndexLocateS' and 'textFMIndexLocateS'
+-- and parallel, 'bytestringFMIndexLocateP' and 'textFMIndexLocateP' , implementations.
 --
--- The locate operation on 'Text', 'textFMIndexLocate', is implemented using the 'locateFMIndexT' function.
+-- The locate operations on 'ByteString', 'bytestringFMIndexLocateS' and 'bytestringFMIndexLocateP', are implemented using the 'locateFMIndexB' function.
+--
+-- The locate operations on 'Text', 'textFMIndexLocateS' and 'textFMIndexLocateP', are implemented using the 'locateFMIndexT' function.
 --
 -- = Internal
 --
@@ -73,11 +79,15 @@ module Data.FMIndex ( -- * To FMIndex functions
                       textFromFMIndexT,
                       bytestringFromFMIndexT,
                       -- * Count operations
-                      bytestringFMIndexCount,
-                      textFMIndexCount,
+                      bytestringFMIndexCountS,
+                      textFMIndexCountS,
+                      bytestringFMIndexCountP,
+                      textFMIndexCountP,
                       -- * Locate operations
-                      bytestringFMIndexLocate,
-                      textFMIndexLocate
+                      bytestringFMIndexLocateS,
+                      textFMIndexLocateS,
+                      bytestringFMIndexLocateP,
+                      textFMIndexLocateP
                     ) where
 
 import Data.BWT
@@ -87,6 +97,7 @@ import Data.FMIndex.Internal
 import Control.Monad()
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
+import Control.Parallel.Strategies as CPS
 import Data.ByteString as BS
 import Data.ByteString.Char8 as BSC8 (singleton,uncons,unpack)
 import Data.Char()
@@ -510,12 +521,12 @@ bytestringFromFMIndexT xs                             = do
 -- and an input 'ByteString'
 -- and returns the number of occurences of the pattern(s)
 -- in the input 'ByteString'.
-bytestringFMIndexCount :: [ByteString]
-                       -> ByteString
-                       -> Seq (ByteString,CIntB)
-bytestringFMIndexCount []      _                        = DS.Empty
-bytestringFMIndexCount _       (BSC8.uncons -> Nothing) = DS.Empty
-bytestringFMIndexCount allpats input                    = do
+bytestringFMIndexCountS :: [ByteString]
+                        -> ByteString
+                        -> Seq (ByteString,CIntB)
+bytestringFMIndexCountS []      _                        = DS.Empty
+bytestringFMIndexCountS _       (BSC8.uncons -> Nothing) = DS.Empty
+bytestringFMIndexCountS allpats input                    = do
   let bfmindex = bytestringToBWTToFMIndexB input
   iBFMC allpats
         bfmindex
@@ -533,15 +544,61 @@ bytestringFMIndexCount allpats input                    = do
 -- and an input 'Text'
 -- and returns the number of occurences of the pattern(s)
 -- in the input 'Text'.
-textFMIndexCount :: [Text]
-                 -> Text
-                 -> Seq (Text,CIntT)
-textFMIndexCount []      _     = DS.Empty 
-textFMIndexCount _       ""    = DS.Empty
-textFMIndexCount allpats input = do
+textFMIndexCountS :: [Text]
+                  -> Text
+                  -> Seq (Text,CIntT)
+textFMIndexCountS []      _     = DS.Empty 
+textFMIndexCountS _       ""    = DS.Empty
+textFMIndexCountS allpats input = do
   let tfmindex = textToBWTToFMIndexT input
   iTFMC allpats
         tfmindex
+    where
+      iTFMC []                      _    = DS.Empty
+      iTFMC (currentpat:restofpats) tfmi = do
+        let patternf    = fmap (DText.singleton) $
+                          DS.fromList            $
+                          DText.unpack currentpat
+        let countf      = runST $ countFMIndexT patternf
+                                                tfmi
+        (currentpat,countf) DS.<| (iTFMC restofpats tfmi)
+
+-- | Takes a list of pattern(s) of 'ByteString's
+-- and an input 'ByteString'
+-- and returns the number of occurences of the pattern(s)
+-- in the input 'ByteString'.
+-- Parallelized over all availible cores.
+bytestringFMIndexCountP :: [ByteString]
+                        -> ByteString
+                        -> Seq (ByteString,CIntB)
+bytestringFMIndexCountP []      _                        = DS.Empty
+bytestringFMIndexCountP _       (BSC8.uncons -> Nothing) = DS.Empty
+bytestringFMIndexCountP allpats input                    = do
+  let bfmindex        = bytestringToBWTToFMIndexB input
+  (iBFMC allpats bfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
+    where
+      iBFMC []                      _    = DS.Empty
+      iBFMC (currentpat:restofpats) bfmi = do 
+        let patternf          = fmap (BSC8.singleton) $
+                                DS.fromList           $
+                                BSC8.unpack currentpat
+        let countf            = runST $ countFMIndexB patternf
+                                                      bfmi
+        (currentpat,countf) DS.<| (iBFMC restofpats bfmi)
+
+-- | Takes a list of pattern(s) of 'Text's
+-- and an input 'Text'
+-- and returns the number of occurences of the pattern(s)
+-- in the input 'Text'.
+-- Parallelized over all availible cores.
+textFMIndexCountP :: [Text]
+                  -> Text
+                  -> Seq (Text,CIntT)
+textFMIndexCountP []      _     = DS.Empty 
+textFMIndexCountP _       ""    = DS.Empty
+textFMIndexCountP allpats input = do
+  let tfmindex = textToBWTToFMIndexT input
+  (iTFMC allpats tfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
     where
       iTFMC []                      _    = DS.Empty
       iTFMC (currentpat:restofpats) tfmi = do
@@ -563,12 +620,12 @@ textFMIndexCount allpats input = do
 -- in the input 'ByteString'.
 -- The output indices are __1__-based,
 -- and are __not__ sorted.
-bytestringFMIndexLocate :: [ByteString]
-                        -> ByteString
-                        -> Seq (ByteString,LIntB)
-bytestringFMIndexLocate []      _                        = DS.Empty
-bytestringFMIndexLocate _       (BSC8.uncons -> Nothing) = DS.Empty
-bytestringFMIndexLocate allpats input                    = do
+bytestringFMIndexLocateS :: [ByteString]
+                         -> ByteString
+                         -> Seq (ByteString,LIntB)
+bytestringFMIndexLocateS []      _                        = DS.Empty
+bytestringFMIndexLocateS _       (BSC8.uncons -> Nothing) = DS.Empty
+bytestringFMIndexLocateS allpats input                    = do
   let bytestringsa      = createSuffixArray   $
                           fmap (BS.singleton) $
                           DS.fromList         $ 
@@ -600,12 +657,12 @@ bytestringFMIndexLocate allpats input                    = do
 -- in the input 'Text'.
 -- The output indices are __1__-based,
 -- and are __not__ sorted.
-textFMIndexLocate :: [Text]
-                  -> Text
-                  -> Seq (Text,LIntT)
-textFMIndexLocate []      _     = DS.Empty
-textFMIndexLocate _       ""    = DS.Empty
-textFMIndexLocate allpats input = do
+textFMIndexLocateS :: [Text]
+                   -> Text
+                   -> Seq (Text,LIntT)
+textFMIndexLocateS []      _     = DS.Empty
+textFMIndexLocateS _       ""    = DS.Empty
+textFMIndexLocateS allpats input = do
   let textsa      = createSuffixArray      $
                     fmap (DText.singleton) $
                     DS.fromList            $
@@ -614,6 +671,78 @@ textFMIndexLocate allpats input = do
   iTFML allpats
         textsa
         tfmindex
+    where
+      iTFML []                      _   _    = DS.Empty
+      iTFML (currentpat:restofpats) tsa tfmi = do
+        let patternf    = fmap (DText.singleton) $
+                          DS.fromList            $
+                          DText.unpack currentpat
+        let indices     = runST $ locateFMIndexT patternf
+                                                 tfmi
+        let indicesf    = fmap (\x -> if | isNothing x
+                                         -> Nothing
+                                         | otherwise
+                                         -> Just           $
+                                            suffixstartpos $
+                                            DS.index tsa ((fromJust x) - 1)
+                               ) indices
+        (currentpat,indicesf) DS.<| (iTFML restofpats tsa tfmi)
+
+-- | Takes a list of pattern(s) of 'ByteString's
+-- and an input 'ByteString'
+-- and returns the indexe(s) of occurences of the pattern(s)
+-- in the input 'ByteString'.
+-- The output indices are __1__-based,
+-- and are __not__ sorted.
+-- Parallelized over all availible cores.
+bytestringFMIndexLocateP :: [ByteString]
+                         -> ByteString
+                         -> Seq (ByteString,LIntB)
+bytestringFMIndexLocateP []      _                        = DS.Empty
+bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = DS.Empty
+bytestringFMIndexLocateP allpats input                    = do
+  let bytestringsa      = createSuffixArray   $
+                          fmap (BS.singleton) $
+                          DS.fromList         $ 
+                          BS.unpack input
+  let bfmindex          = bytestringToBWTToFMIndexB input
+  (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
+    where
+      iBFML []                      _   _    = DS.Empty
+      iBFML (currentpat:restofpats) bsa bfmi = do
+        let patternf    = fmap (BSC8.singleton) $
+                          DS.fromList           $
+                          BSC8.unpack currentpat
+        let indices     = runST $ locateFMIndexB patternf
+                                                 bfmi
+        let indicesf    = fmap (\x -> if | isNothing x
+                                         -> Nothing
+                                         | otherwise
+                                         -> Just           $
+                                            suffixstartpos $
+                                            DS.index bsa ((fromJust x) - 1)
+                               ) indices
+        (currentpat,indicesf) DS.<| (iBFML restofpats bsa bfmi)
+
+-- | Takes a list of pattern(s) of 'Text's
+-- and an input 'Text'
+-- and returns the indexe(s) of occurences of the pattern(s)
+-- in the input 'Text'.
+-- The output indices are __1__-based,
+-- and are __not__ sorted.
+-- Parallelized over all availible cores.
+textFMIndexLocateP :: [Text]
+                   -> Text
+                   -> Seq (Text,LIntT)
+textFMIndexLocateP []      _     = DS.Empty
+textFMIndexLocateP _       ""    = DS.Empty
+textFMIndexLocateP allpats input = do
+  let textsa      = createSuffixArray      $
+                    fmap (DText.singleton) $
+                    DS.fromList            $
+                    DText.unpack input
+  let tfmindex    = textToBWTToFMIndexT input
+  (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
     where
       iTFML []                      _   _    = DS.Empty
       iTFML (currentpat:restofpats) tsa tfmi = do
