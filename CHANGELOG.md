@@ -96,3 +96,7 @@
 ## 0.1.0.23 -- 2022-12-07
 
 * Fixed grammar/spelling in FM-index documentation.
+
+## 0.1.0.24 -- 2022-12-08
+
+* Optimized parallel implementation for locate and count FM-index functions.
