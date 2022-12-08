@@ -574,17 +574,18 @@ bytestringFMIndexCountP :: [ByteString]
 bytestringFMIndexCountP []      _                        = DS.Empty
 bytestringFMIndexCountP _       (BSC8.uncons -> Nothing) = DS.Empty
 bytestringFMIndexCountP allpats input                    = do
-  let bfmindex        = bytestringToBWTToFMIndexB input
-  (iBFMC allpats bfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
+  let bfmindex = bytestringToBWTToFMIndexB input
+  let bcount   = (iBFMC allpats bfmindex) `CPS.using` (CPS.parList CPS.rseq)
+  DS.fromList bcount
     where
-      iBFMC []                      _    = DS.Empty
+      iBFMC []                      _    = []
       iBFMC (currentpat:restofpats) bfmi = do 
         let patternf          = fmap (BSC8.singleton) $
                                 DS.fromList           $
                                 BSC8.unpack currentpat
         let countf            = runST $ countFMIndexB patternf
                                                       bfmi
-        (currentpat,countf) DS.<| (iBFMC restofpats bfmi)
+        (currentpat,countf) : (iBFMC restofpats bfmi)
 
 -- | Takes a list of pattern(s) of 'Text's
 -- and an input 'Text'
@@ -598,16 +599,17 @@ textFMIndexCountP []      _     = DS.Empty
 textFMIndexCountP _       ""    = DS.Empty
 textFMIndexCountP allpats input = do
   let tfmindex = textToBWTToFMIndexT input
-  (iTFMC allpats tfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
+  let tcount   = (iTFMC allpats tfmindex) `CPS.using` (CPS.parList CPS.rseq)
+  DS.fromList tcount
     where
-      iTFMC []                      _    = DS.Empty
+      iTFMC []                      _    = []
       iTFMC (currentpat:restofpats) tfmi = do
         let patternf    = fmap (DText.singleton) $
                           DS.fromList            $
                           DText.unpack currentpat
         let countf      = runST $ countFMIndexT patternf
                                                 tfmi
-        (currentpat,countf) DS.<| (iTFMC restofpats tfmi)
+        (currentpat,countf) : (iTFMC restofpats tfmi)
 
 {-------------------}
 
@@ -626,11 +628,11 @@ bytestringFMIndexLocateS :: [ByteString]
 bytestringFMIndexLocateS []      _                        = DS.Empty
 bytestringFMIndexLocateS _       (BSC8.uncons -> Nothing) = DS.Empty
 bytestringFMIndexLocateS allpats input                    = do
-  let bytestringsa      = createSuffixArray   $
-                          fmap (BS.singleton) $
-                          DS.fromList         $ 
-                          BS.unpack input
-  let bfmindex          = bytestringToBWTToFMIndexB input
+  let bytestringsa = createSuffixArray   $
+                     fmap (BS.singleton) $
+                     DS.fromList         $ 
+                     BS.unpack input
+  let bfmindex     = bytestringToBWTToFMIndexB input
   iBFML allpats
         bytestringsa
         bfmindex
@@ -701,14 +703,15 @@ bytestringFMIndexLocateP :: [ByteString]
 bytestringFMIndexLocateP []      _                        = DS.Empty
 bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = DS.Empty
 bytestringFMIndexLocateP allpats input                    = do
-  let bytestringsa      = createSuffixArray   $
-                          fmap (BS.singleton) $
-                          DS.fromList         $ 
-                          BS.unpack input
-  let bfmindex          = bytestringToBWTToFMIndexB input
-  (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
+  let bytestringsa = createSuffixArray   $
+                     fmap (BS.singleton) $
+                     DS.fromList         $ 
+                     BS.unpack input
+  let bfmindex     = bytestringToBWTToFMIndexB input
+  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parList CPS.rseq)
+  DS.fromList blocate
     where
-      iBFML []                      _   _    = DS.Empty
+      iBFML []                      _   _    = []
       iBFML (currentpat:restofpats) bsa bfmi = do
         let patternf    = fmap (BSC8.singleton) $
                           DS.fromList           $
@@ -722,7 +725,7 @@ bytestringFMIndexLocateP allpats input                    = do
                                             suffixstartpos $
                                             DS.index bsa ((fromJust x) - 1)
                                ) indices
-        (currentpat,indicesf) DS.<| (iBFML restofpats bsa bfmi)
+        (currentpat,indicesf) : (iBFML restofpats bsa bfmi)
 
 -- | Takes a list of pattern(s) of 'Text's
 -- and an input 'Text'
@@ -737,14 +740,15 @@ textFMIndexLocateP :: [Text]
 textFMIndexLocateP []      _     = DS.Empty
 textFMIndexLocateP _       ""    = DS.Empty
 textFMIndexLocateP allpats input = do
-  let textsa      = createSuffixArray      $
-                    fmap (DText.singleton) $
-                    DS.fromList            $
-                    DText.unpack input
-  let tfmindex    = textToBWTToFMIndexT input
-  (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parTraversable CPS.rseq)
+  let textsa   = createSuffixArray      $
+                 fmap (DText.singleton) $
+                 DS.fromList            $
+                 DText.unpack input
+  let tfmindex = textToBWTToFMIndexT input
+  let tlocate  = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parList CPS.rseq)
+  DS.fromList tlocate
     where
-      iTFML []                      _   _    = DS.Empty
+      iTFML []                      _   _    = []
       iTFML (currentpat:restofpats) tsa tfmi = do
         let patternf    = fmap (DText.singleton) $
                           DS.fromList            $
@@ -758,6 +762,6 @@ textFMIndexLocateP allpats input = do
                                             suffixstartpos $
                                             DS.index tsa ((fromJust x) - 1)
                                ) indices
-        (currentpat,indicesf) DS.<| (iTFML restofpats tsa tfmi)
+        (currentpat,indicesf) : (iTFML restofpats tsa tfmi)
 
 {--------------------}
