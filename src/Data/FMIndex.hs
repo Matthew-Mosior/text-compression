@@ -31,7 +31,7 @@
 --
 -- = Operation: Count
 --
--- The count operation is supported by both serial, 'bytestringFMIndexCountS' and 'textFMIndexCountS'
+-- The count operation is supported by both sequential, 'bytestringFMIndexCountS' and 'textFMIndexCountS'
 -- and parallel, 'bytestringFMIndexCountP' and 'textFMIndexCountP' , implementations.
 --
 -- The count operations on 'ByteString', 'bytestringFMIndexCountS' and 'bytestringFMIndexCountP', are implemented using the 'countFMIndexB' function.
@@ -40,7 +40,7 @@
 --
 -- = Operation: Locate
 --
--- The locate operation is supported by both serial, 'bytestringFMIndexLocateS' and 'textFMIndexLocateS'
+-- The locate operation is supported by both sequential, 'bytestringFMIndexLocateS' and 'textFMIndexLocateS'
 -- and parallel, 'bytestringFMIndexLocateP' and 'textFMIndexLocateP' , implementations.
 --
 -- The locate operations on 'ByteString', 'bytestringFMIndexLocateS' and 'bytestringFMIndexLocateP', are implemented using the 'locateFMIndexB' function.
@@ -568,7 +568,9 @@ textFMIndexCountS allpats input = do
 -- and an input 'ByteString'
 -- and returns the number of occurences of the pattern(s)
 -- in the input 'ByteString'.
--- Parallelized over all available cores.
+-- Parallelized and utilizes chunking
+-- based on the number of available cores.
+-- When using, compile with: -O2 -threaded -with-rtsopts=-N.
 bytestringFMIndexCountP :: [ByteString]
                         -> ByteString
                         -> IO (Seq (ByteString,CIntB))
@@ -594,7 +596,9 @@ bytestringFMIndexCountP allpats input                    = do
 -- and an input 'Text'
 -- and returns the number of occurences of the pattern(s)
 -- in the input 'Text'.
--- Parallelized over all available cores.
+-- Parallelized and utilizes chunking
+-- based on the number of available cores.
+-- When using, compile with: -O2 -threaded -with-rtsopts=-N.
 textFMIndexCountP :: [Text]
                   -> Text
                   -> IO (Seq (Text,CIntT))
@@ -701,7 +705,9 @@ textFMIndexLocateS allpats input = do
 -- in the input 'ByteString'.
 -- The output indices are __1__-based,
 -- and are __not__ sorted.
--- Parallelized over all available cores.
+-- Parallelized and utilizes chunking
+-- based on the number of available cores.
+-- When using, compile with: -O2 -threaded -with-rtsopts=-N.
 bytestringFMIndexLocateP :: [ByteString]
                          -> ByteString
                          -> IO (Seq (ByteString,LIntB))
@@ -740,7 +746,9 @@ bytestringFMIndexLocateP allpats input                    = do
 -- in the input 'Text'.
 -- The output indices are __1__-based,
 -- and are __not__ sorted.
--- Parallelized over all available cores.
+-- Parallelized and utilizes chunking
+-- based on the number of available cores.
+-- When using, compile with: -O2 -threaded -with-rtsopts=-N.
 textFMIndexLocateP :: [Text]
                    -> Text
                    -> IO (Seq (Text,LIntT))
