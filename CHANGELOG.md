@@ -92,3 +92,7 @@
 ## 0.1.0.22 -- 2022-12-07
 
 * Added parallel implementation for locate and count functions. Renamed serial version by adding 'S' at the end.
+
+## 0.1.0.23 -- 2022-12-07
+
+* Fixed grammar/spelling in FM-index documentation.
