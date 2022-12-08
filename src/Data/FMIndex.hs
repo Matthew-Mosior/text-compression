@@ -576,8 +576,9 @@ bytestringFMIndexCountP []      _                        = return DS.Empty
 bytestringFMIndexCountP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexCountP allpats input                    = do
   numcores <- CC.getNumCapabilities
-  let bfmindex = bytestringToBWTToFMIndexB input
-  let bcount   = (iBFMC allpats bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let chunksize = (P.length allpats) `div` numcores
+  let bfmindex  = bytestringToBWTToFMIndexB input
+  let bcount    = (iBFMC allpats bfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList bcount
     where
       iBFMC []                      _    = []
@@ -601,8 +602,9 @@ textFMIndexCountP []      _     = return DS.Empty
 textFMIndexCountP _       ""    = return DS.Empty
 textFMIndexCountP allpats input = do
   numcores <- CC.getNumCapabilities 
-  let tfmindex = textToBWTToFMIndexT input
-  let tcount   = (iTFMC allpats tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let chunksize = (P.length allpats) `div` numcores
+  let tfmindex  = textToBWTToFMIndexT input
+  let tcount    = (iTFMC allpats tfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList tcount
     where
       iTFMC []                      _    = []
@@ -707,13 +709,13 @@ bytestringFMIndexLocateP []      _                        = return DS.Empty
 bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexLocateP allpats input                    = do
   numcores <- CC.getNumCapabilities
-  print numcores
+  let chunksize    = (P.length allpats) `div` numcores
   let bytestringsa = createSuffixArray   $
                      fmap (BS.singleton) $
                      DS.fromList         $ 
                      BS.unpack input
   let bfmindex     = bytestringToBWTToFMIndexB input
-  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList blocate
     where
       iBFML []                      _   _    = []
@@ -746,12 +748,13 @@ textFMIndexLocateP []      _     = return DS.Empty
 textFMIndexLocateP _       ""    = return DS.Empty
 textFMIndexLocateP allpats input = do
   numcores <- CC.getNumCapabilities
-  let textsa   = createSuffixArray      $
-                 fmap (DText.singleton) $
-                 DS.fromList            $
-                 DText.unpack input
-  let tfmindex = textToBWTToFMIndexT input
-  let tlocate  = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let chunksize = (P.length allpats) `div` numcores
+  let textsa    = createSuffixArray      $
+                  fmap (DText.singleton) $
+                  DS.fromList            $
+                  DText.unpack input
+  let tfmindex  = textToBWTToFMIndexT input
+  let tlocate   = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList tlocate
     where
       iTFML []                      _   _    = []
