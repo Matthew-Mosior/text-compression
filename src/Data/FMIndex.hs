@@ -707,6 +707,7 @@ bytestringFMIndexLocateP []      _                        = return DS.Empty
 bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexLocateP allpats input                    = do
   numcores <- CC.getNumCapabilities
+  print numcores
   let bytestringsa = createSuffixArray   $
                      fmap (BS.singleton) $
                      DS.fromList         $ 
