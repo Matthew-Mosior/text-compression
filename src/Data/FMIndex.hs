@@ -577,7 +577,7 @@ bytestringFMIndexCountP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexCountP allpats input                    = do
   numcores <- CC.getNumCapabilities
   let bfmindex = bytestringToBWTToFMIndexB input
-  let bcount   = (iBFMC allpats bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let bcount   = (iBFMC allpats bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rdeepseq)
   return $ DS.fromList bcount
     where
       iBFMC []                      _    = []
@@ -602,7 +602,7 @@ textFMIndexCountP _       ""    = return DS.Empty
 textFMIndexCountP allpats input = do
   numcores <- CC.getNumCapabilities 
   let tfmindex = textToBWTToFMIndexT input
-  let tcount   = (iTFMC allpats tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let tcount   = (iTFMC allpats tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rdeepseq)
   return $ DS.fromList tcount
     where
       iTFMC []                      _    = []
@@ -712,7 +712,7 @@ bytestringFMIndexLocateP allpats input                    = do
                      DS.fromList         $ 
                      BS.unpack input
   let bfmindex     = bytestringToBWTToFMIndexB input
-  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rdeepseq)
   return $ DS.fromList blocate
     where
       iBFML []                      _   _    = []
@@ -750,7 +750,7 @@ textFMIndexLocateP allpats input = do
                  DS.fromList            $
                  DText.unpack input
   let tfmindex = textToBWTToFMIndexT input
-  let tlocate  = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  let tlocate  = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rdeepseq)
   return $ DS.fromList tlocate
     where
       iTFML []                      _   _    = []
