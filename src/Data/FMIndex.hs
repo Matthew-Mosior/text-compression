@@ -94,6 +94,7 @@ import Data.BWT
 import Data.BWT.Internal
 import Data.FMIndex.Internal
 
+import Control.Concurrent as CC (getNumCapabilities)
 import Control.Monad()
 import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
@@ -570,13 +571,14 @@ textFMIndexCountS allpats input = do
 -- Parallelized over all available cores.
 bytestringFMIndexCountP :: [ByteString]
                         -> ByteString
-                        -> Seq (ByteString,CIntB)
-bytestringFMIndexCountP []      _                        = DS.Empty
-bytestringFMIndexCountP _       (BSC8.uncons -> Nothing) = DS.Empty
+                        -> IO (Seq (ByteString,CIntB))
+bytestringFMIndexCountP []      _                        = return DS.Empty
+bytestringFMIndexCountP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexCountP allpats input                    = do
+  numcores <- CC.getNumCapabilities
   let bfmindex = bytestringToBWTToFMIndexB input
-  let bcount   = (iBFMC allpats bfmindex) `CPS.using` (CPS.parList CPS.rseq)
-  DS.fromList bcount
+  let bcount   = (iBFMC allpats bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  return $ DS.fromList bcount
     where
       iBFMC []                      _    = []
       iBFMC (currentpat:restofpats) bfmi = do 
@@ -594,13 +596,14 @@ bytestringFMIndexCountP allpats input                    = do
 -- Parallelized over all available cores.
 textFMIndexCountP :: [Text]
                   -> Text
-                  -> Seq (Text,CIntT)
-textFMIndexCountP []      _     = DS.Empty 
-textFMIndexCountP _       ""    = DS.Empty
+                  -> IO (Seq (Text,CIntT))
+textFMIndexCountP []      _     = return DS.Empty 
+textFMIndexCountP _       ""    = return DS.Empty
 textFMIndexCountP allpats input = do
+  numcores <- CC.getNumCapabilities 
   let tfmindex = textToBWTToFMIndexT input
-  let tcount   = (iTFMC allpats tfmindex) `CPS.using` (CPS.parList CPS.rseq)
-  DS.fromList tcount
+  let tcount   = (iTFMC allpats tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  return $ DS.fromList tcount
     where
       iTFMC []                      _    = []
       iTFMC (currentpat:restofpats) tfmi = do
@@ -699,17 +702,18 @@ textFMIndexLocateS allpats input = do
 -- Parallelized over all available cores.
 bytestringFMIndexLocateP :: [ByteString]
                          -> ByteString
-                         -> Seq (ByteString,LIntB)
-bytestringFMIndexLocateP []      _                        = DS.Empty
-bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = DS.Empty
+                         -> IO (Seq (ByteString,LIntB))
+bytestringFMIndexLocateP []      _                        = return DS.Empty
+bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexLocateP allpats input                    = do
+  numcores <- CC.getNumCapabilities
   let bytestringsa = createSuffixArray   $
                      fmap (BS.singleton) $
                      DS.fromList         $ 
                      BS.unpack input
   let bfmindex     = bytestringToBWTToFMIndexB input
-  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parList CPS.rseq)
-  DS.fromList blocate
+  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  return $ DS.fromList blocate
     where
       iBFML []                      _   _    = []
       iBFML (currentpat:restofpats) bsa bfmi = do
@@ -736,17 +740,18 @@ bytestringFMIndexLocateP allpats input                    = do
 -- Parallelized over all available cores.
 textFMIndexLocateP :: [Text]
                    -> Text
-                   -> Seq (Text,LIntT)
-textFMIndexLocateP []      _     = DS.Empty
-textFMIndexLocateP _       ""    = DS.Empty
+                   -> IO (Seq (Text,LIntT))
+textFMIndexLocateP []      _     = return DS.Empty
+textFMIndexLocateP _       ""    = return DS.Empty
 textFMIndexLocateP allpats input = do
+  numcores <- CC.getNumCapabilities
   let textsa   = createSuffixArray      $
                  fmap (DText.singleton) $
                  DS.fromList            $
                  DText.unpack input
   let tfmindex = textToBWTToFMIndexT input
-  let tlocate  = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parList CPS.rseq)
-  DS.fromList tlocate
+  let tlocate  = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parListChunk numcores CPS.rseq)
+  return $ DS.fromList tlocate
     where
       iTFML []                      _   _    = []
       iTFML (currentpat:restofpats) tsa tfmi = do
