@@ -125,6 +125,8 @@ module Data.FMIndex.Internal ( -- * Base FM-index types
                                CcT(..),
                                CB(..),
                                CT(..),
+                               SAB(..),
+                               SAT(..),
                                -- * To OccCK (ByteString) functions
                                PBOccCKSeqB,
                                OccCKSeqB,
@@ -251,7 +253,7 @@ module Data.FMIndex.Internal ( -- * Base FM-index types
                                locateFMIndexT
                              ) where
 
-import Data.BWT.Internal()
+import Data.BWT.Internal (SuffixArray)
 import Data.MTF.Internal
 
 import Control.Monad as CM
@@ -274,11 +276,11 @@ import Prelude as P
 {-Base level types.-}
 
 -- | Basic FMIndex ('ByteString') data type.
-newtype FMIndexB = FMIndexB (CcB,OccCKB)
+newtype FMIndexB = FMIndexB (CcB,OccCKB,SAB)
   deriving (Eq,Ord,Show,Read,Generic)
 
 -- | Basic FMIndex ('Text') data type.
-newtype FMIndexT = FMIndexT (CcT,OccCKT)
+newtype FMIndexT = FMIndexT (CcT,OccCKT,SAT)
   deriving (Eq,Ord,Show,Read,Generic)
 
 -- | Basic OccCKB ('ByteString') data type.
@@ -303,6 +305,14 @@ newtype CB = CB (Maybe Int)
 
 -- | Basic count ('Text') operation data type.
 newtype CT = CT (Maybe Int)
+  deriving (Eq,Ord,Show,Read,Generic)
+
+-- | Basic 'SuffixArray' ('ByteString') data type.
+newtype SAB = SAB (SuffixArray ByteString)
+  deriving (Eq,Ord,Show,Read,Generic)
+
+-- | Basic 'SuffixArray' ('Text') data type.
+newtype SAT = SAT (SuffixArray Text)
   deriving (Eq,Ord,Show,Read,Generic)
 
 {-------------------}
@@ -786,15 +796,16 @@ type FFMIndexSeqB = Seq (Maybe ByteString)
 -- | Simple Inverse FMIndex function. 
 seqFromFMIndexB :: FMIndexB
                 -> FFMIndexSeqB
-seqFromFMIndexB (FMIndexB (CcB DS.Empty,_))    = DS.Empty
-seqFromFMIndexB (FMIndexB (_,OccCKB DS.Empty)) = DS.Empty
-seqFromFMIndexB xs                             = do
+seqFromFMIndexB (FMIndexB (CcB DS.Empty,_,_))    = DS.Empty
+seqFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = DS.Empty
+seqFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = DS.Empty
+seqFromFMIndexB xs                               = do
   let xss = (\(OccCKB b) -> b) $
-            (\(_,b) -> b)      $
+            (\(_,b,_) -> b)    $
             (\(FMIndexB b) -> b) xs
   iFFMIndexB xss
     where
-      iFFMIndexB DS.Empty         = DS.Empty 
+      iFFMIndexB DS.Empty         = DS.Empty
       iFFMIndexB ((_,b) DS.:<| _) =
         fmap (\(_,_,e) -> e) b
 
@@ -809,11 +820,12 @@ type FFMIndexSeqT = Seq (Maybe Text)
 -- | Simple Inverse FMIndex function.
 seqFromFMIndexT :: FMIndexT
                 -> FFMIndexSeqT
-seqFromFMIndexT (FMIndexT (CcT DS.Empty,_))    = DS.Empty
-seqFromFMIndexT (FMIndexT (_,OccCKT DS.Empty)) = DS.Empty
-seqFromFMIndexT xs                             = do
+seqFromFMIndexT (FMIndexT (CcT DS.Empty,_,_))    = DS.Empty
+seqFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = DS.Empty
+seqFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = DS.Empty
+seqFromFMIndexT xs                               = do
   let xss = (\(OccCKT t) -> t) $
-            (\(_,b) -> b)      $
+            (\(_,b,_) -> b)    $
             (\(FMIndexT t) -> t) xs
   iFFMIndexT xss
     where
@@ -891,10 +903,11 @@ emptySTCCurrentEndB = newSTRef (-1)
 countFMIndexB :: PBCPat
               -> FMIndexB
               -> ST s CIntB 
-countFMIndexB DS.Empty _                              = return Nothing
-countFMIndexB _        (FMIndexB (CcB DS.Empty,_))    = return Nothing
-countFMIndexB _        (FMIndexB (_,OccCKB DS.Empty)) = return Nothing
-countFMIndexB xs       ys                             = do
+countFMIndexB DS.Empty _                                = return Nothing
+countFMIndexB _        (FMIndexB (CcB DS.Empty,_,_))    = return Nothing
+countFMIndexB _        (FMIndexB (_,OccCKB DS.Empty,_)) = return Nothing
+countFMIndexB _        (FMIndexB (_,_,SAB DS.Empty))    = return Nothing
+countFMIndexB xs       ys                               = do
   bccounter      <- emptySTCCounterB
   bcbool         <- emptySTCBoolB
   bccurrentstart <- emptySTCCurrentStartB
@@ -919,10 +932,10 @@ countFMIndexB xs       ys                             = do
       iCB DS.Empty      _  _   _   _    _    = pure ()
       iCB (as DS.:|> a) bs bcc bcb bccs bcce = do
         let ccbbs = (\(CcB b) -> b) $
-                    (\(a,_) -> a)   $
+                    (\(a,_,_) -> a) $
                     (\(FMIndexB b) -> b) bs
         let coccckbs = (\(OccCKB b) -> b) $
-                       (\(_,b) -> b)      $
+                       (\(_,b,_) -> b)    $
                        (\(FMIndexB b) -> b) bs
         cbcc <- readSTRef bcc
         cbccs <- readSTRef bccs
@@ -1061,10 +1074,11 @@ emptySTCCurrentEndT = newSTRef (-1)
 countFMIndexT :: PTCPat
               -> FMIndexT
               -> ST s CIntT
-countFMIndexT DS.Empty _                              = return Nothing
-countFMIndexT _        (FMIndexT (CcT DS.Empty,_))    = return Nothing
-countFMIndexT _        (FMIndexT (_,OccCKT DS.Empty)) = return Nothing
-countFMIndexT xs       ys                             = do
+countFMIndexT DS.Empty _                                = return Nothing
+countFMIndexT _        (FMIndexT (CcT DS.Empty,_,_))    = return Nothing
+countFMIndexT _        (FMIndexT (_,OccCKT DS.Empty,_)) = return Nothing
+countFMIndexT _        (FMIndexT (_,_,SAT DS.Empty))    = return Nothing
+countFMIndexT xs       ys                               = do
   tccounter      <- emptySTCCounterT
   tcbool         <- emptySTCBoolT
   tccurrentstart <- emptySTCCurrentStartT
@@ -1089,10 +1103,10 @@ countFMIndexT xs       ys                             = do
       iCT DS.Empty      _  _   _   _    _    = pure ()
       iCT (as DS.:|> a) bs tcc tcb tccs tcce = do
         let cctbs = (\(CcT t) -> t) $
-                    (\(a,_) -> a)   $
+                    (\(a,_,_) -> a) $
                     (\(FMIndexT t) -> t) bs
         let coccckts = (\(OccCKT t) -> t) $
-                       (\(_,b) -> b)      $
+                       (\(_,b,_) -> b)    $
                        (\(FMIndexT t) -> t) bs
         ctcc <- readSTRef tcc
         ctccs <- readSTRef tccs
@@ -1231,10 +1245,11 @@ emptySTLCurrentEndB = newSTRef (-1)
 locateFMIndexB :: PBLPat
                -> FMIndexB
                -> ST s LIntB
-locateFMIndexB DS.Empty _                              = return DS.Empty
-locateFMIndexB _        (FMIndexB (CcB DS.Empty,_))    = return DS.Empty
-locateFMIndexB _        (FMIndexB (_,OccCKB DS.Empty)) = return DS.Empty 
-locateFMIndexB xs       ys                             = do
+locateFMIndexB DS.Empty _                                = return DS.Empty
+locateFMIndexB _        (FMIndexB (CcB DS.Empty,_,_))    = return DS.Empty
+locateFMIndexB _        (FMIndexB (_,OccCKB DS.Empty,_)) = return DS.Empty
+locateFMIndexB _        (FMIndexB (_,_,SAB DS.Empty))    = return DS.Empty 
+locateFMIndexB xs       ys                               = do
   blcounter      <- emptySTLCounterB
   blbool         <- emptySTLBoolB
   blcurrentstart <- emptySTLCurrentStartB
@@ -1261,10 +1276,10 @@ locateFMIndexB xs       ys                             = do
       iLB DS.Empty      _  _   _   _    _    = pure ()
       iLB (as DS.:|> a) bs blc blb blcs blce = do
         let ccbbs = (\(CcB b) -> b) $
-                    (\(a,_) -> a)   $
+                    (\(a,_,_) -> a) $
                     (\(FMIndexB b) -> b) bs
         let coccckbs = (\(OccCKB b) -> b) $
-                       (\(_,b) -> b)      $
+                       (\(_,b,_) -> b)    $
                        (\(FMIndexB b) -> b) bs
         cblc <- readSTRef blc
         cblcs <- readSTRef blcs
@@ -1403,10 +1418,11 @@ emptySTLCurrentEndT = newSTRef (-1)
 locateFMIndexT :: PTLPat
                -> FMIndexT
                -> ST s LIntT
-locateFMIndexT DS.Empty _                              = return DS.Empty
-locateFMIndexT _        (FMIndexT (CcT DS.Empty,_))    = return DS.Empty
-locateFMIndexT _        (FMIndexT (_,OccCKT DS.Empty)) = return DS.Empty
-locateFMIndexT xs       ys                             = do
+locateFMIndexT DS.Empty _                                = return DS.Empty
+locateFMIndexT _        (FMIndexT (CcT DS.Empty,_,_))    = return DS.Empty
+locateFMIndexT _        (FMIndexT (_,OccCKT DS.Empty,_)) = return DS.Empty
+locateFMIndexT _        (FMIndexT (_,_,SAT DS.Empty))    = return DS.Empty
+locateFMIndexT xs       ys                               = do
   tlcounter      <- emptySTLCounterT
   tlbool         <- emptySTLBoolT
   tlcurrentstart <- emptySTLCurrentStartT
@@ -1433,10 +1449,10 @@ locateFMIndexT xs       ys                             = do
       iLT DS.Empty      _  _   _   _    _    = pure ()
       iLT (as DS.:|> a) bs tlc tlb tlcs tlce = do
         let cctbs = (\(CcT t) -> t) $
-                    (\(a,_) -> a)   $
+                    (\(a,_,_) -> a) $
                     (\(FMIndexT t) -> t) bs
         let coccckts = (\(OccCKT t) -> t) $
-                       (\(_,b) -> b)      $
+                       (\(_,b,_) -> b)    $
                        (\(FMIndexT t) -> t) bs
         ctlc <- readSTRef tlc
         ctlcs <- readSTRef tlcs
