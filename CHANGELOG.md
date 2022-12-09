@@ -100,3 +100,7 @@
 ## 0.1.0.24 -- 2022-12-08
 
 * Optimized parallel implementation for locate and count FM-index functions.
+
+## 0.1.0.25 -- 2022-12-09
+
+* Optimized FMIndexB and FMIndexT data types to include the SuffixArray of the respective input.

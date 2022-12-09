@@ -21,14 +21,6 @@
 -- To do this, users can use the 'bytestringToBWTToFMIndexB' and 'bytestringToBWTToFMIndexT' functions,
 -- as well as the 'textToBWTToFMIndexB' and 'textToBWTToFMIndexT' functions.
 --
--- The base functions for 'ByteString', 'bytestringToFMIndexB' and 'bytestringToFMIndexT' can be used to
--- convert a 'Seq' ('Maybe' 'ByteString') to a 'FMIndexB' and 'FMIndexT', respectively.
---
--- Likewise, the base functions for 'Text', 'textToFMIndexB' and 'textToFMIndexT' can be used to
--- convert a 'Seq' ('Maybe' 'Text') to a 'FMIndexB' and 'FMIndexT' respectively.
---
--- There are various other lower-level functions for interacting with the FMIndex implementation on 'ByteString' and 'Text' as well.
---
 -- = Operation: Count
 --
 -- The count operation is supported by both sequential, 'bytestringFMIndexCountS' and 'textFMIndexCountS'
@@ -60,11 +52,7 @@ module Data.FMIndex ( -- * To FMIndex functions
                       textBWTToFMIndexB,
                       bytestringBWTToFMIndexB,
                       textBWTToFMIndexT,
-                      bytestringBWTToFMIndexT,
-                      textToFMIndexB,
-                      bytestringToFMIndexB,
-                      textToFMIndexT,
-                      bytestringToFMIndexT,
+                      bytestringBWTToFMIndexT,    
                       -- * From FMIndex functions
                       bytestringFromBWTFromFMIndexB,
                       bytestringFromBWTFromFMIndexT,
@@ -147,11 +135,16 @@ textToBWTToFMIndexT xs = textBWTToFMIndexT (createBWTMatrix $ BS.unpack $ DTE.en
 textBWTToFMIndexB :: BWTMatrix Word8
                   -> TextBWT
                   -> FMIndexB
-textBWTToFMIndexB (BWTMatrix DS.Empty) _  = FMIndexB (CcB DS.Empty,OccCKB DS.Empty)
+textBWTToFMIndexB (BWTMatrix DS.Empty) _  = FMIndexB (CcB DS.Empty,OccCKB DS.Empty,SAB DS.Empty)
 textBWTToFMIndexB bwm                  xs = do
   let occckb = CMST.runST $ seqToOccCKB xss
   let ccb    = CMST.runST $ seqToCcB bwmff
-  FMIndexB (CcB ccb,OccCKB occckb)
+  let sab    = createSuffixArray     $
+               fmap (BSC8.singleton) $
+               DS.fromList           $
+               DText.unpack          $
+               textFromBWT xs
+  FMIndexB (CcB ccb,OccCKB occckb,SAB sab)
     where
       bwmf  = fmap (\x -> case viewl x of
                             EmptyL       -> Nothing
@@ -180,11 +173,16 @@ textBWTToFMIndexB bwm                  xs = do
 bytestringBWTToFMIndexB :: BWTMatrix Word8
                         -> BWT Word8
                         -> FMIndexB
-bytestringBWTToFMIndexB (BWTMatrix DS.Empty) _  = FMIndexB (CcB DS.Empty,OccCKB DS.Empty) 
+bytestringBWTToFMIndexB (BWTMatrix DS.Empty) _  = FMIndexB (CcB DS.Empty,OccCKB DS.Empty,SAB DS.Empty) 
 bytestringBWTToFMIndexB bwm                  xs = do
   let occckb = CMST.runST $ seqToOccCKB xss
-  let ccb    = CMST.runST $ seqToCcB bwmff 
-  FMIndexB (CcB ccb,OccCKB occckb)
+  let ccb    = CMST.runST $ seqToCcB bwmff
+  let sab    = createSuffixArray   $
+               fmap (BS.singleton) $
+               DS.fromList         $
+               BS.unpack           $
+               bytestringFromWord8BWT xs
+  FMIndexB (CcB ccb,OccCKB occckb,SAB sab)
     where
       bwmf  = fmap (\x -> case viewl x of
                             EmptyL       -> Nothing
@@ -212,11 +210,16 @@ bytestringBWTToFMIndexB bwm                  xs = do
 textBWTToFMIndexT :: BWTMatrix Word8
                   -> TextBWT
                   -> FMIndexT
-textBWTToFMIndexT (BWTMatrix DS.Empty) _  = FMIndexT (CcT DS.Empty,OccCKT DS.Empty)
+textBWTToFMIndexT (BWTMatrix DS.Empty) _  = FMIndexT (CcT DS.Empty,OccCKT DS.Empty,SAT DS.Empty)
 textBWTToFMIndexT bwm                  xs = do
   let occckt = CMST.runST $ seqToOccCKT xss
   let cct    = CMST.runST $ seqToCcT bwmff
-  FMIndexT (CcT cct,OccCKT occckt)
+  let sat    = createSuffixArray      $
+               fmap (DText.singleton) $
+               DS.fromList            $
+               DText.unpack           $
+               textFromBWT xs 
+  FMIndexT (CcT cct,OccCKT occckt,SAT sat)
     where
       bwmf  = fmap (\x -> case viewl x of
                             EmptyL       -> Nothing
@@ -247,11 +250,17 @@ textBWTToFMIndexT bwm                  xs = do
 bytestringBWTToFMIndexT :: BWTMatrix Word8
                         -> BWT Word8
                         -> FMIndexT
-bytestringBWTToFMIndexT (BWTMatrix DS.Empty) _  = FMIndexT (CcT DS.Empty,OccCKT DS.Empty)
+bytestringBWTToFMIndexT (BWTMatrix DS.Empty) _  = FMIndexT (CcT DS.Empty,OccCKT DS.Empty,SAT DS.Empty)
 bytestringBWTToFMIndexT bwm                  xs = do
   let occckt = CMST.runST $ seqToOccCKT xss
   let cct    = CMST.runST $ seqToCcT bwmff
-  FMIndexT (CcT cct,OccCKT occckt)
+  let sat    = createSuffixArray $
+               fmap (DText.singleton) $
+               DS.fromList            $
+               DText.unpack           $
+               DTE.decodeUtf8         $
+               bytestringFromWord8BWT xs
+  FMIndexT (CcT cct,OccCKT occckt,SAT sat)
     where
       bwmf  = fmap (\x -> case viewl x of
                             EmptyL       -> Nothing
@@ -276,104 +285,6 @@ bytestringBWTToFMIndexT bwm                  xs = do
                  )
             ((\(BWT t) -> t) xs)
 
--- | Takes a 'Text' and returns the FM-index ('FMIndexB').
-textToFMIndexB :: BWTMatrix Text
-               -> Seq (Maybe Text)
-               -> FMIndexB
-textToFMIndexB (BWTMatrix DS.Empty) _        = FMIndexB (CcB DS.Empty,OccCKB DS.Empty) 
-textToFMIndexB _                    DS.Empty = FMIndexB (CcB DS.Empty,OccCKB DS.Empty)
-textToFMIndexB bwm                  xs       = do
-  let occckb = CMST.runST $ seqToOccCKB xss
-  let ccb    = CMST.runST $ seqToCcB bwmff
-  FMIndexB (CcB ccb,OccCKB occckb)
-    where
-      bwmf  = fmap (\x -> case viewl x of
-                            EmptyL       -> Nothing
-                            (xh DS.:< _) -> xh
-                   ) $
-              (\(BWTMatrix m) -> m) bwm
-      bwmff = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just           $
-                                DTE.encodeUtf8 $
-                                fromJust x
-                   ) bwmf
-      xss   = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just           $
-                                DTE.encodeUtf8 $
-                                fromJust x
-                   )
-              xs
-
--- | Takes a 'Seq' of 'ByteString's and returns the FM-index ('FMIndexB').
-bytestringToFMIndexB :: BWTMatrix ByteString
-                     -> Seq (Maybe ByteString)
-                     -> FMIndexB
-bytestringToFMIndexB (BWTMatrix DS.Empty) _        = FMIndexB (CcB DS.Empty,OccCKB DS.Empty)
-bytestringToFMIndexB _                    DS.Empty = FMIndexB (CcB DS.Empty,OccCKB DS.Empty)
-bytestringToFMIndexB bwm                  xs       = do
-  let occckb = CMST.runST $ seqToOccCKB xs
-  let ccb    = CMST.runST $ seqToCcB bwmf
-  FMIndexB (CcB ccb,OccCKB occckb)
-    where
-      bwmf  = fmap (\x -> case viewl x of
-                            EmptyL       -> Nothing
-                            (xh DS.:< _) -> xh
-                   ) $
-              (\(BWTMatrix m) -> m) bwm
-
--- | Takes a 'Text' and returns the FM-index ('FMIndexT').
-textToFMIndexT :: BWTMatrix Text
-               -> Seq (Maybe Text)
-               -> FMIndexT
-textToFMIndexT (BWTMatrix DS.Empty) _        = FMIndexT (CcT DS.Empty,OccCKT DS.Empty)
-textToFMIndexT _                    DS.Empty = FMIndexT (CcT DS.Empty,OccCKT DS.Empty) 
-textToFMIndexT bwm                  xs       = do
-  let occckt = CMST.runST $ seqToOccCKT xs
-  let cct    = CMST.runST $ seqToCcT bwmf
-  FMIndexT (CcT cct,OccCKT occckt)
-    where
-      bwmf  = fmap (\x -> case viewl x of
-                            EmptyL       -> Nothing
-                            (xh DS.:< _) -> xh
-                   ) $
-              (\(BWTMatrix m) -> m) bwm
-
--- | Takes a 'ByteString' and returns the FM-index ('FMIndexT').
-bytestringToFMIndexT :: BWTMatrix ByteString
-                     -> Seq (Maybe ByteString)
-                     -> FMIndexT
-bytestringToFMIndexT (BWTMatrix DS.Empty) _        = FMIndexT (CcT DS.Empty,OccCKT DS.Empty) 
-bytestringToFMIndexT _                    DS.Empty = FMIndexT (CcT DS.Empty,OccCKT DS.Empty) 
-bytestringToFMIndexT bwm                  xs       = do
-  let occckt = CMST.runST $ seqToOccCKT xss
-  let cct    = CMST.runST $ seqToCcT bwmff
-  FMIndexT (CcT cct,OccCKT occckt)
-    where
-      bwmf  = fmap (\x -> case viewl x of
-                            EmptyL       -> Nothing
-                            (xh DS.:< _) -> xh
-                   ) $
-              (\(BWTMatrix m) -> m) bwm
-      bwmff = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just           $
-                                DTE.decodeUtf8 $ 
-                                fromJust x
-                   ) bwmf
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              fromJust x
-                 )
-            xs
-
 {-----------------------}
 
 
@@ -390,16 +301,16 @@ bytestringFromBWTFromFMIndexB = bytestringFromByteStringBWT . bytestringBWTFromF
 bytestringFromBWTFromFMIndexT :: FMIndexT
                               -> ByteString
 bytestringFromBWTFromFMIndexT xs = bytestringFromByteStringBWT $
-                               BWT                         $
-                               fmap (\x -> if | isNothing x
-                                              -> Nothing
-                                              | otherwise
-                                              -> Just           $
-                                                 DTE.encodeUtf8 $
-                                                 fromJust x
-                                    )
+                                   BWT                             $
+                                   fmap (\x -> if | isNothing x
+                                                  -> Nothing
+                                                  | otherwise
+                                                  -> Just           $
+                                                     DTE.encodeUtf8 $
+                                                     fromJust x
+                                        )
                                                            $
-                            ((\(BWT t) -> t) (textBWTFromFMIndexT xs))
+                                   ((\(BWT t) -> t) (textBWTFromFMIndexT xs))
 
 -- | Helper function for converting a 'BWT'ed 'FMIndexB'
 -- back to the original 'Text'.
@@ -417,18 +328,20 @@ textFromBWTFromFMIndexT = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestr
 -- the 'BWT' of 'Text's.
 textBWTFromFMIndexT :: FMIndexT
                     -> BWT Text
-textBWTFromFMIndexT (FMIndexT (CcT DS.Empty,_))    = BWT DS.Empty
-textBWTFromFMIndexT (FMIndexT (_,OccCKT DS.Empty)) = BWT DS.Empty
-textBWTFromFMIndexT xs                             =
+textBWTFromFMIndexT (FMIndexT (CcT DS.Empty,_,_))    = BWT DS.Empty
+textBWTFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = BWT DS.Empty
+textBWTFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = BWT DS.Empty
+textBWTFromFMIndexT xs                               =
   BWT (seqFromFMIndexT xs)
 
 -- | Takes a 'FMIndexT' and returns
 -- the 'BWT' of 'ByteString's.
 bytestringBWTFromFMIndexT :: FMIndexT
                           -> BWT ByteString
-bytestringBWTFromFMIndexT (FMIndexT (CcT DS.Empty,_))    = BWT DS.Empty
-bytestringBWTFromFMIndexT (FMIndexT (_,OccCKT DS.Empty)) = BWT DS.Empty 
-bytestringBWTFromFMIndexT xs                             = do
+bytestringBWTFromFMIndexT (FMIndexT (CcT DS.Empty,_,_))    = BWT DS.Empty
+bytestringBWTFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = BWT DS.Empty
+bytestringBWTFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = BWT DS.Empty
+bytestringBWTFromFMIndexT xs                               = do
   let originalbwtb = seqFromFMIndexT xs
   BWT (fmap (\x -> if | isNothing x
                       -> Nothing
@@ -442,9 +355,10 @@ bytestringBWTFromFMIndexT xs                             = do
 -- the 'BWT' of 'Text's.
 textBWTFromFMIndexB :: FMIndexB
                     -> BWT Text
-textBWTFromFMIndexB (FMIndexB (CcB DS.Empty,_))    = BWT DS.Empty
-textBWTFromFMIndexB (FMIndexB (_,OccCKB DS.Empty)) = BWT DS.Empty
-textBWTFromFMIndexB xs                             = do
+textBWTFromFMIndexB (FMIndexB (CcB DS.Empty,_,_))    = BWT DS.Empty
+textBWTFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = BWT DS.Empty
+textBWTFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = BWT DS.Empty
+textBWTFromFMIndexB xs                               = do
   let originalbwtt = seqFromFMIndexB xs
   BWT (fmap (\x -> if | isNothing x
                       -> Nothing
@@ -458,18 +372,20 @@ textBWTFromFMIndexB xs                             = do
 -- the 'BWT' of 'ByteString's.
 bytestringBWTFromFMIndexB :: FMIndexB
                           -> BWT ByteString
-bytestringBWTFromFMIndexB (FMIndexB (CcB DS.Empty,_))    = BWT DS.Empty
-bytestringBWTFromFMIndexB (FMIndexB (_,OccCKB DS.Empty)) = BWT DS.Empty 
-bytestringBWTFromFMIndexB xs                             =
+bytestringBWTFromFMIndexB (FMIndexB (CcB DS.Empty,_,_))    = BWT DS.Empty
+bytestringBWTFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = BWT DS.Empty
+bytestringBWTFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = BWT DS.Empty
+bytestringBWTFromFMIndexB xs                               =
   BWT (seqFromFMIndexB xs)
 
 -- | Takes a 'FMIndexB' and returns
 -- the original 'Seq' of 'Text's.
 textFromFMIndexB :: FMIndexB
                  -> Seq (Maybe Text)
-textFromFMIndexB (FMIndexB (CcB DS.Empty,_))    = DS.Empty
-textFromFMIndexB (FMIndexB (_,OccCKB DS.Empty)) = DS.Empty
-textFromFMIndexB xs                             = do
+textFromFMIndexB (FMIndexB (CcB DS.Empty,_,_))    = DS.Empty
+textFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = DS.Empty
+textFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = DS.Empty
+textFromFMIndexB xs                               = do
   let originalt = seqFromFMIndexB xs
   fmap (\x -> if | isNothing x
                  -> Nothing
@@ -483,27 +399,30 @@ textFromFMIndexB xs                             = do
 -- the original 'Seq' of 'ByteString's.
 bytestringFromFMIndexB :: FMIndexB
                        -> Seq (Maybe ByteString)
-bytestringFromFMIndexB (FMIndexB (CcB DS.Empty,_))    = DS.Empty
-bytestringFromFMIndexB (FMIndexB (_,OccCKB DS.Empty)) = DS.Empty 
-bytestringFromFMIndexB xs                             =
+bytestringFromFMIndexB (FMIndexB (CcB DS.Empty,_,_))    = DS.Empty
+bytestringFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = DS.Empty
+bytestringFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = DS.Empty
+bytestringFromFMIndexB xs                               =
   seqFromFMIndexB xs
 
 -- | Takes a 'FMIndexT' and returns
 -- the original 'Seq' of 'Text's.
 textFromFMIndexT :: FMIndexT
                  -> Seq (Maybe Text)
-textFromFMIndexT (FMIndexT (CcT DS.Empty,_))    = DS.Empty
-textFromFMIndexT (FMIndexT (_,OccCKT DS.Empty)) = DS.Empty
-textFromFMIndexT xs                             =
+textFromFMIndexT (FMIndexT (CcT DS.Empty,_,_))    = DS.Empty
+textFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = DS.Empty
+textFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = DS.Empty
+textFromFMIndexT xs                               =
   seqFromFMIndexT xs
 
 -- | Takes a 'FMIndexT' and returns
 -- the original 'Seq' of 'ByteString's.
 bytestringFromFMIndexT :: FMIndexT
                        -> Seq (Maybe ByteString)
-bytestringFromFMIndexT (FMIndexT (CcT DS.Empty,_))    = DS.Empty
-bytestringFromFMIndexT (FMIndexT (_,OccCKT DS.Empty)) = DS.Empty
-bytestringFromFMIndexT xs                             = do
+bytestringFromFMIndexT (FMIndexT (CcT DS.Empty,_,_))    = DS.Empty
+bytestringFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = DS.Empty
+bytestringFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = DS.Empty
+bytestringFromFMIndexT xs                               = do
   let originalb = seqFromFMIndexT xs
   fmap (\x -> if | isNothing x
                  -> Nothing
@@ -580,7 +499,9 @@ bytestringFMIndexCountP allpats input                    = do
   numcores <- CC.getNumCapabilities
   let chunksize = (P.length allpats) `div` numcores
   let bfmindex  = bytestringToBWTToFMIndexB input
-  let bcount    = (iBFMC allpats bfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
+  let bcount    = (iBFMC allpats bfmindex)
+                  `CPS.using`
+                  (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList bcount
     where
       iBFMC []                      _    = []
@@ -608,7 +529,9 @@ textFMIndexCountP allpats input = do
   numcores <- CC.getNumCapabilities 
   let chunksize = (P.length allpats) `div` numcores
   let tfmindex  = textToBWTToFMIndexT input
-  let tcount    = (iTFMC allpats tfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
+  let tcount    = (iTFMC allpats tfmindex)
+                  `CPS.using`
+                  (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList tcount
     where
       iTFMC []                      _    = []
@@ -637,11 +560,10 @@ bytestringFMIndexLocateS :: [ByteString]
 bytestringFMIndexLocateS []      _                        = DS.Empty
 bytestringFMIndexLocateS _       (BSC8.uncons -> Nothing) = DS.Empty
 bytestringFMIndexLocateS allpats input                    = do
-  let bytestringsa = createSuffixArray   $
-                     fmap (BS.singleton) $
-                     DS.fromList         $ 
-                     BS.unpack input
   let bfmindex     = bytestringToBWTToFMIndexB input
+  let bytestringsa = (\(SAB t) -> t) $
+                     (\(_,_,c) -> c) $
+                     (\(FMIndexB t) -> t) bfmindex
   iBFML allpats
         bytestringsa
         bfmindex
@@ -674,11 +596,10 @@ textFMIndexLocateS :: [Text]
 textFMIndexLocateS []      _     = DS.Empty
 textFMIndexLocateS _       ""    = DS.Empty
 textFMIndexLocateS allpats input = do
-  let textsa      = createSuffixArray      $
-                    fmap (DText.singleton) $
-                    DS.fromList            $
-                    DText.unpack input
   let tfmindex    = textToBWTToFMIndexT input
+  let textsa      = (\(SAT t) -> t) $
+                    (\(_,_,c) -> c) $
+                    (\(FMIndexT t) -> t) tfmindex
   iTFML allpats
         textsa
         tfmindex
@@ -716,12 +637,13 @@ bytestringFMIndexLocateP _       (BSC8.uncons -> Nothing) = return DS.Empty
 bytestringFMIndexLocateP allpats input                    = do
   numcores <- CC.getNumCapabilities
   let chunksize    = (P.length allpats) `div` numcores
-  let bytestringsa = createSuffixArray   $
-                     fmap (BS.singleton) $
-                     DS.fromList         $ 
-                     BS.unpack input
   let bfmindex     = bytestringToBWTToFMIndexB input
-  let blocate      = (iBFML allpats bytestringsa bfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
+  let bytestringsa = (\(SAB t) -> t) $
+                     (\(_,_,c) -> c) $
+                     (\(FMIndexB t) -> t) bfmindex
+  let blocate      = (iBFML allpats bytestringsa bfmindex)
+                     `CPS.using`
+                     (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList blocate
     where
       iBFML []                      _   _    = []
@@ -757,12 +679,13 @@ textFMIndexLocateP _       ""    = return DS.Empty
 textFMIndexLocateP allpats input = do
   numcores <- CC.getNumCapabilities
   let chunksize = (P.length allpats) `div` numcores
-  let textsa    = createSuffixArray      $
-                  fmap (DText.singleton) $
-                  DS.fromList            $
-                  DText.unpack input
   let tfmindex  = textToBWTToFMIndexT input
-  let tlocate   = (iTFML allpats textsa tfmindex) `CPS.using` (CPS.parListChunk chunksize CPS.rseq)
+  let textsa    = (\(SAT t) -> t) $
+                  (\(_,_,c) -> c) $
+                  (\(FMIndexT t) -> t) tfmindex
+  let tlocate   = (iTFML allpats textsa tfmindex)
+                  `CPS.using`
+                  (CPS.parListChunk chunksize CPS.rseq)
   return $ DS.fromList tlocate
     where
       iTFML []                      _   _    = []
