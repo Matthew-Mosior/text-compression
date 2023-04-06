@@ -56,11 +56,11 @@ module Data.RLE ( -- * To RLE functions
                   textFromRLEB,
                   bytestringFromRLEB,
                   textFromRLET,
-                  bytestringFromRLET                   
+                  bytestringFromRLET
                 ) where
 
 import Data.BWT
-import Data.BWT.Internal 
+import Data.BWT.Internal
 import Data.RLE.Internal
 
 import Control.Monad()
@@ -73,7 +73,7 @@ import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..))
 import Data.STRef()
-import Data.Text as DText 
+import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import Prelude as P
@@ -179,7 +179,7 @@ bytestringBWTToRLET xs             =
 textToRLEB :: Seq (Maybe Text)
            -> RLEB
 textToRLEB DS.Empty = RLEB DS.Empty
-textToRLEB xs       = 
+textToRLEB xs       =
   RLEB (CMST.runST $ seqToRLEB xss)
     where
       xss = fmap (\x -> if | isNothing x
@@ -219,7 +219,7 @@ bytestringToRLET xs       =
                               DTE.decodeUtf8 $
                               fromJust x
                  )
-            xs 
+            xs
 
 {-------------------}
 
@@ -228,7 +228,7 @@ bytestringToRLET xs       =
 
 -- | Helper function for converting a 'BWT'ed 'RLEB'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromRLEB :: RLEB 
+bytestringFromBWTFromRLEB :: RLEB
                           -> ByteString
 bytestringFromBWTFromRLEB = bytestringFromByteStringBWT . bytestringBWTFromRLEB
 
@@ -252,7 +252,7 @@ bytestringFromBWTFromRLET xs = bytestringFromByteStringBWT $
 -- back to the original 'Text'.
 textFromBWTFromRLEB :: RLEB
                     -> Text
-textFromBWTFromRLEB = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromRLEB 
+textFromBWTFromRLEB = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromRLEB
 
 -- | Helper function for converting a 'BWT'ed 'RLET'
 -- back to the original 'Text'.
@@ -265,7 +265,7 @@ textFromBWTFromRLET = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringB
 textBWTFromRLET :: RLET
                 -> BWT Text
 textBWTFromRLET (RLET DS.Empty) = BWT DS.Empty
-textBWTFromRLET xs              = 
+textBWTFromRLET xs              =
   BWT (CMST.runST $ seqFromRLET xs)
 
 -- | Takes a 'RLET' and returns
@@ -280,7 +280,7 @@ bytestringBWTFromRLET xs              = do
                       | otherwise
                       -> Just           $
                          DTE.encodeUtf8 $
-                        fromJust x 
+                        fromJust x
             ) originalbwtb)
 
 -- | Takes a 'RLEB' and returns
@@ -300,7 +300,7 @@ textBWTFromRLEB xs              = do
 
 -- | Take a 'RLEB' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromRLEB :: RLEB 
+bytestringBWTFromRLEB :: RLEB
                       -> BWT ByteString
 bytestringBWTFromRLEB (RLEB DS.Empty) = BWT DS.Empty
 bytestringBWTFromRLEB xs              =
@@ -347,7 +347,7 @@ bytestringFromRLET xs              = do
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise
-                 -> Just           $ 
+                 -> Just           $
                     DTE.encodeUtf8 $
                     fromJust x
        ) originalb

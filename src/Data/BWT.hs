@@ -12,7 +12,7 @@
 -- Portability :  portable
 --
 -- = Burrows-Wheeler Transform (BWT)
--- 
+--
 -- The two functions that most users will utilize are 'toBWT' and 'fromBWT'.
 -- There are auxilary function(s) inside of @"Data.BWT.Internal"@.
 --
@@ -86,7 +86,7 @@ textToBWT = TextBWT . bytestringToBWT . DTE.encodeUtf8
 {-fromBWT function(s)-}
 
 -- | Takes a BWT data type (please see @"Data.BWT.Internal"@) and inverts it back to the original string.
--- 
+--
 -- This function utilizes the state monad (strict) in order
 -- to implement the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) Inverse BWT algorithm by backtracking
 -- indices starting with the (__Nothing__,_) entry.

@@ -170,7 +170,7 @@ seqToRLEB (x DS.:<| xs) = do
   brlecounterstack <- emptySTRLECounterB
   brletempstack    <- emptySTRLETempB
   updateSTRLECounterB brlecounterstack
-                      1 
+                      1
   updateSTRLETempB brletempstack
                    x
   iRLEB xs
@@ -199,7 +199,7 @@ seqToRLEB (x DS.:<| xs) = do
                                 BSC8.pack $
                                 show cbrlecs)
                  pushSTRLESeqB brless
-                               cbrlets 
+                               cbrlets
                  pushSTRLESeqB brless
                                (Just      $
                                 BSC8.pack $
@@ -207,7 +207,7 @@ seqToRLEB (x DS.:<| xs) = do
                  pushSTRLESeqB brless
                                Nothing
                  updateSTRLETempB brlets
-                                  Nothing             
+                                  Nothing
                  iRLEB ys
                        brless
                        brlecs
@@ -327,7 +327,7 @@ seqToRLET (x DS.:<| xs) = do
                        DText.pack $
                        show ctrlecs)
         pushSTRLESeqT trless
-                      ctrlets 
+                      ctrlets
         pure ()
       iRLET (y DS.:<| ys) trless trlecs trlets = do
         ctrlecs <- readSTRef trlecs
@@ -429,7 +429,7 @@ seqFromRLEB xs              = do
              isNothing y2
            -> do pushFSTRLESeqB fbrless
                                 Nothing
-                 pure () 
+                 pure ()
            | otherwise
            -> do let y1' = read        $
                            BSC8.unpack $
@@ -438,7 +438,7 @@ seqFromRLEB xs              = do
                  CM.replicateM_ y1'
                                 (pushFSTRLESeqB fbrless
                                                 (Just y2'))
-                 pure () 
+                 pure ()
       iFRLEB (y1 DS.:<| y2 DS.:<| ys)       fbrless =
         if | isJust y1     &&
              isNothing y2
@@ -455,7 +455,7 @@ seqFromRLEB xs              = do
                                 (pushFSTRLESeqB fbrless
                                                 (Just y2'))
                  iFRLEB ys
-                        fbrless 
+                        fbrless
       iFRLEB (DSI.Seq EmptyT)               _       = pure ()
       iFRLEB (DSI.Seq (Single _))           _       = pure ()
       iFRLEB (DSI.Seq (Deep _ _ _ _))       _       = pure ()

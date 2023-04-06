@@ -80,7 +80,7 @@ module Data.MTF.Internal ( -- * Base MTF types
                            loadFSTMTFILB,
                            updateFSTMTFILB,
                            emptyFSTMTFILB,
-                           seqFromMTFB, 
+                           seqFromMTFB,
                            -- * From MTF (Text) functions
                            FMTFSeqT,
                            FSTMTFSeqT,
@@ -182,7 +182,7 @@ initializeSTMTFLSSeqB s e        = do
 -- with each step of the MTF.
 updateSTMTFLSSeqB :: STMTFLSSeqB s (Seq Int,Seq (Maybe ByteString))
                   -> Int
-                  -> ST s () 
+                  -> ST s ()
 updateSTMTFLSSeqB s i = do
   (s2i,s2b) <- readSTRef s
   let newheade = DS.index s2b i
@@ -192,7 +192,7 @@ updateSTMTFLSSeqB s i = do
 
 -- | State function to create empty 'STMTFLSSeqB' type.
 emptySTMTFLSSeqB :: ST s (STMTFLSSeqB s a)
-emptySTMTFLSSeqB = newSTRef (DS.empty,DS.empty) 
+emptySTMTFLSSeqB = newSTRef (DS.empty,DS.empty)
 
 -- | Abstract 'STMTFILB' and associated state type.
 type STMTFILB s a = STRef s (Seq (Maybe ByteString))
@@ -233,11 +233,11 @@ seqToMTFB xs            = do
   bmtfcounterstack <- emptySTMTFCounterB
   let il = nubSeq' xs
   loadSTMTFILB bmtfinitiallist
-               il 
+               il
   iMTFB xs
         bmtfinitiallist
         bmtfseqstack
-        bmtfcounterstack 
+        bmtfcounterstack
   bmtfseqstackr <- readSTRef bmtfseqstack
   return bmtfseqstackr
     where
@@ -441,7 +441,7 @@ updateFSTMTFILB s i = do
   s2 <- readSTRef s
   let newheade = DS.index s2 i
   writeSTRef s (DS.deleteAt i s2)
-  ns2 <- readSTRef s 
+  ns2 <- readSTRef s
   writeSTRef s (newheade DS.<| ns2)
 
 -- | State function to create empty 'FSTMTFILB' type.
@@ -461,7 +461,7 @@ seqFromMTFB (MTFB (_,DS.Empty)) = do
   return fbmtfseqstackemptyr
 seqFromMTFB xs                  = do
   let xss = (\(MTFB b) -> b) xs
-  fbmtfseqstack     <- emptyFSTMTFSeqB 
+  fbmtfseqstack     <- emptyFSTMTFSeqB
   fbmtfinitiallist  <- emptyFSTMTFILB
   let il = nubSeq' (snd xss)
   loadFSTMTFILB fbmtfinitiallist
@@ -478,7 +478,7 @@ seqFromMTFB xs                  = do
         updateFSTMTFSeqB fbmtfss
                          (DS.index cfbmtfil y)
         updateFSTMTFILB fbmtfil
-                        y 
+                        y
         iFMTFB ys
                fbmtfil
                fbmtfss

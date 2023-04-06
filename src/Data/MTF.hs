@@ -60,7 +60,7 @@ module Data.MTF ( -- * To MTF functions
                 ) where
 
 import Data.BWT
-import Data.BWT.Internal 
+import Data.BWT.Internal
 import Data.MTF.Internal
 
 import Control.Monad()
@@ -73,7 +73,7 @@ import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..))
 import Data.STRef()
-import Data.Text as DText 
+import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import Prelude as P
@@ -177,7 +177,7 @@ bytestringBWTToMTFT xs =
 textToMTFB :: Seq (Maybe Text)
            -> MTFB
 textToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
-textToMTFB xs       = 
+textToMTFB xs       =
   MTFB (CMST.runST $ seqToMTFB xss)
     where
       xss = fmap (\x -> if | isNothing x
@@ -217,7 +217,7 @@ bytestringToMTFT xs       =
                               DTE.decodeUtf8 $
                               fromJust x
                  )
-            xs 
+            xs
 
 {-------------------}
 
@@ -226,7 +226,7 @@ bytestringToMTFT xs       =
 
 -- | Helper function for converting a 'BWT'ed 'MTFB'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromMTFB :: MTFB 
+bytestringFromBWTFromMTFB :: MTFB
                           -> ByteString
 bytestringFromBWTFromMTFB = bytestringFromByteStringBWT . bytestringBWTFromMTFB
 
@@ -264,7 +264,7 @@ textBWTFromMTFT :: MTFT
                 -> BWT Text
 textBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
-textBWTFromMTFT xs                  = 
+textBWTFromMTFT xs                  =
   BWT (CMST.runST $ seqFromMTFT xs)
 
 -- | Takes a 'MTFT' and returns
@@ -280,7 +280,7 @@ bytestringBWTFromMTFT xs                  = do
                       | otherwise
                       -> Just           $
                          DTE.encodeUtf8 $
-                        fromJust x 
+                        fromJust x
             ) originalbwtb)
 
 -- | Takes a 'MTFB' and returns
@@ -301,7 +301,7 @@ textBWTFromMTFB xs                  = do
 
 -- | Take a 'MTFB' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromMTFB :: MTFB 
+bytestringBWTFromMTFB :: MTFB
                       -> BWT ByteString
 bytestringBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
@@ -353,7 +353,7 @@ bytestringFromMTFT xs                  = do
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise
-                 -> Just           $ 
+                 -> Just           $
                     DTE.encodeUtf8 $
                     fromJust x
        ) originalb

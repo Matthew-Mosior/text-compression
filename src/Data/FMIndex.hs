@@ -52,7 +52,7 @@ module Data.FMIndex ( -- * To FMIndex functions
                       textBWTToFMIndexB,
                       bytestringBWTToFMIndexB,
                       textBWTToFMIndexT,
-                      bytestringBWTToFMIndexT,    
+                      bytestringBWTToFMIndexT,
                       -- * From FMIndex functions
                       bytestringFromBWTFromFMIndexB,
                       bytestringFromBWTFromFMIndexT,
@@ -173,7 +173,7 @@ textBWTToFMIndexB bwm                  xs = do
 bytestringBWTToFMIndexB :: BWTMatrix Word8
                         -> BWT Word8
                         -> FMIndexB
-bytestringBWTToFMIndexB (BWTMatrix DS.Empty) _  = FMIndexB (CcB DS.Empty,OccCKB DS.Empty,SAB DS.Empty) 
+bytestringBWTToFMIndexB (BWTMatrix DS.Empty) _  = FMIndexB (CcB DS.Empty,OccCKB DS.Empty,SAB DS.Empty)
 bytestringBWTToFMIndexB bwm                  xs = do
   let occckb = CMST.runST $ seqToOccCKB xss
   let ccb    = CMST.runST $ seqToCcB bwmff
@@ -218,7 +218,7 @@ textBWTToFMIndexT bwm                  xs = do
                fmap (DText.singleton) $
                DS.fromList            $
                DText.unpack           $
-               textFromBWT xs 
+               textFromBWT xs
   FMIndexT (CcT cct,OccCKT occckt,SAT sat)
     where
       bwmf  = fmap (\x -> case viewl x of
@@ -452,7 +452,7 @@ bytestringFMIndexCountS allpats input                    = do
         bfmindex
     where
       iBFMC []                      _    = DS.Empty
-      iBFMC (currentpat:restofpats) bfmi = do 
+      iBFMC (currentpat:restofpats) bfmi = do
         let patternf          = fmap (BSC8.singleton) $
                                 DS.fromList           $
                                 BSC8.unpack currentpat
@@ -467,7 +467,7 @@ bytestringFMIndexCountS allpats input                    = do
 textFMIndexCountS :: [Text]
                   -> Text
                   -> Seq (Text,CIntT)
-textFMIndexCountS []      _     = DS.Empty 
+textFMIndexCountS []      _     = DS.Empty
 textFMIndexCountS _       ""    = DS.Empty
 textFMIndexCountS allpats input = do
   let tfmindex = textToBWTToFMIndexT input
@@ -505,7 +505,7 @@ bytestringFMIndexCountP allpats input                    = do
   return $ DS.fromList bcount
     where
       iBFMC []                      _    = []
-      iBFMC (currentpat:restofpats) bfmi = do 
+      iBFMC (currentpat:restofpats) bfmi = do
         let patternf          = fmap (BSC8.singleton) $
                                 DS.fromList           $
                                 BSC8.unpack currentpat
@@ -523,10 +523,10 @@ bytestringFMIndexCountP allpats input                    = do
 textFMIndexCountP :: [Text]
                   -> Text
                   -> IO (Seq (Text,CIntT))
-textFMIndexCountP []      _     = return DS.Empty 
+textFMIndexCountP []      _     = return DS.Empty
 textFMIndexCountP _       ""    = return DS.Empty
 textFMIndexCountP allpats input = do
-  numcores <- CC.getNumCapabilities 
+  numcores <- CC.getNumCapabilities
   let chunksize = (P.length allpats) `div` numcores
   let tfmindex  = textToBWTToFMIndexT input
   let tcount    = (iTFMC allpats tfmindex)

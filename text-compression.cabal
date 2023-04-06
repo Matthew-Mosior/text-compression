@@ -91,7 +91,7 @@ library
     hs-source-dirs:   src
 
     -- Base language which the package is written in.
-    default-language: Haskell2010 
+    default-language: Haskell2010
 
     -- Set highest (reasonable) optimization level to compile with.
     ghc-options: -O2 -fprof-auto
