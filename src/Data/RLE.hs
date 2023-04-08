@@ -2,7 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE Strict            #-}
-
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module      :  Data.RLE
@@ -56,10 +57,11 @@ module Data.RLE ( -- * To RLE functions
                   textFromRLEB,
                   bytestringFromRLEB,
                   textFromRLET,
-                  bytestringFromRLET
+                  bytestringFromRLET,
+                  tests
                 ) where
 
-import Data.BWT
+import Data.BWT hiding (tests)
 import Data.BWT.Internal
 import Data.RLE.Internal
 
@@ -76,7 +78,9 @@ import Data.STRef()
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
+import GHC.Exts (fromList)
 import Prelude as P
+import Test.HUnit
 
 
 {-toRLE Function(s)-}
@@ -353,3 +357,16 @@ bytestringFromRLET xs              = do
        ) originalb
 
 {---------------------}
+
+tests :: Test
+tests =
+  TestList
+  [ TestCase (assertEqual "test 1"
+                (RLET (fromList [Just "1",Just "c",
+                                 Just "1",Nothing,
+                                 Just "4",Just "a",
+                                 Just "3",Just "b",
+                                 Just "3",Just "c",
+                                 Just "1",Just "b"]))
+                (textToBWTToRLET "aaaabbbbcccc"))
+  ]

@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE Strict            #-}
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 
 -- |
@@ -56,10 +58,11 @@ module Data.MTF ( -- * To MTF functions
                   textFromMTFB,
                   bytestringFromMTFB,
                   textFromMTFT,
-                  bytestringFromMTFT
+                  bytestringFromMTFT,
+                  tests
                 ) where
 
-import Data.BWT
+import Data.BWT hiding (tests)
 import Data.BWT.Internal
 import Data.MTF.Internal
 
@@ -77,6 +80,7 @@ import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import Prelude as P
+import Test.HUnit
 
 
 {-toMTF Function(s)-}
@@ -359,3 +363,6 @@ bytestringFromMTFT xs                  = do
        ) originalb
 
 {---------------------}
+
+tests :: Test
+tests = TestList []

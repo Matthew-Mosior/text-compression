@@ -2,6 +2,8 @@
 {-# LANGUAGE MultiWayIf    #-}
 {-# LANGUAGE ViewPatterns  #-}
 {-# LANGUAGE Strict        #-}
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 
 -- |
@@ -30,7 +32,8 @@ module Data.BWT ( -- * To BWT functions
                   fromBWT,
                   bytestringFromWord8BWT,
                   bytestringFromByteStringBWT,
-                  textFromBWT
+                  textFromBWT,
+                  tests
                 ) where
 
 import Data.BWT.Internal
@@ -46,6 +49,7 @@ import Data.Text (Text)
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import GHC.Generics(Generic)
+import Test.HUnit
 
 
 {-toBWT Function(s)-}
@@ -123,3 +127,6 @@ textFromBWT (TextBWT x) = DTE.decodeUtf8 $
                           bytestringFromWord8BWT x
 
 {---------------------}
+
+tests :: Test
+tests = TestList []

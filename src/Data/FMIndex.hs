@@ -3,6 +3,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE Strict            #-}
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 
 -- |
@@ -75,10 +77,11 @@ module Data.FMIndex ( -- * To FMIndex functions
                       bytestringFMIndexLocateS,
                       textFMIndexLocateS,
                       bytestringFMIndexLocateP,
-                      textFMIndexLocateP
+                      textFMIndexLocateP,
+                      tests
                     ) where
 
-import Data.BWT
+import Data.BWT hiding (tests)
 import Data.BWT.Internal
 import Data.FMIndex.Internal
 
@@ -98,6 +101,7 @@ import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import Prelude as P
+import Test.HUnit
 
 
 {-toFMIndex Function(s)-}
@@ -705,3 +709,6 @@ textFMIndexLocateP allpats input = do
         (currentpat,indicesf) : (iTFML restofpats tsa tfmi)
 
 {--------------------}
+
+tests :: Test
+tests = TestList []
