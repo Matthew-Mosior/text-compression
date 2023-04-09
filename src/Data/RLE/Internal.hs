@@ -4,6 +4,7 @@
 {-# LANGUAGE DeriveGeneric    #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 
 -- |
@@ -81,22 +82,30 @@ import Prelude as P
 
 
 class (Monoid b, Eq b) => Pack b where
-  pck :: String -> b
-  unpck :: b -> String
+  pck :: [Itm b] -> b
+  unpck :: b -> [Itm b]
   type Itm b
   one :: Itm b -> b
+  fromString :: String -> b
+  toString :: b -> String
+{-# DEPRECATED fromString "temporary until run representation is changed" #-}
+{-# DEPRECATED toString "temporary until run representation is changed" #-}
 
 instance Pack ByteString where
-  pck = BSC8.pack
-  unpck = BSC8.unpack
+  pck = BS.pack
+  unpck = BS.unpack
   type Itm ByteString = Word8
   one = BS.singleton
+  fromString = BSC8.pack
+  toString = BSC8.unpack
 
 instance Pack Text where
   pck = DText.pack
   unpck = DText.unpack
   type Itm Text = Char
   one = DText.singleton
+  fromString = pck
+  toString = unpck
 
 {-Base level types.-}
 
@@ -158,7 +167,7 @@ emptySTRLECounter :: ST s (STRLECounter b s Int)
 emptySTRLECounter = newSTRef (-1)
 
 -- | Strict state monad function.
-seqToRLE :: Pack b => RLESeq b -> ST s (RLESeq b)
+seqToRLE :: forall b s. Pack b => RLESeq b -> ST s (RLESeq b)
 seqToRLE DS.Empty      = do
   brleseqstackempty  <- emptySTRLESeq
   brleseqstackemptyr <- readSTRef brleseqstackempty
@@ -178,12 +187,18 @@ seqToRLE (x DS.:<| xs) = do
   brleseqstackr <- readSTRef brleseqstack
   return brleseqstackr
     where
+      iRLE ::
+           Seq (Maybe b)
+        -> STRef s (RLESeq b)
+        -> STRef s Int
+        -> STRef s (Maybe b)
+        -> ST s ()
       iRLE DS.Empty      brless brlecs brlets = do
         cbrlecs <- readSTRef brlecs
         cbrlets <- readSTRef brlets
         pushSTRLESeq brless
                       (Just      $
-                       pck $
+                       fromString $
                        show cbrlecs)
         pushSTRLESeq brless
                       cbrlets
@@ -194,13 +209,13 @@ seqToRLE (x DS.:<| xs) = do
         if | isNothing y
            -> do pushSTRLESeq brless
                                (Just      $
-                                pck $
+                                fromString $
                                 show cbrlecs)
                  pushSTRLESeq brless
                                cbrlets
                  pushSTRLESeq brless
                                (Just      $
-                                pck $
+                                fromString $
                                 show (1 :: Int))
                  pushSTRLESeq brless
                                Nothing
@@ -229,7 +244,7 @@ seqToRLE (x DS.:<| xs) = do
            | otherwise
            -> do pushSTRLESeq brless
                                (Just      $
-                                pck $
+                                fromString $
                                 show cbrlecs)
                  pushSTRLESeq brless
                                cbrlets
@@ -269,7 +284,7 @@ emptyFSTRLESeq :: ST s (FSTRLESeq b s a)
 emptyFSTRLESeq = newSTRef DS.empty
 
 -- | Strict state monad function.
-seqFromRLE :: Pack b => RLE b -> ST s (FRLESeq b)
+seqFromRLE :: forall b s. Pack b => RLE b -> ST s (FRLESeq b)
 seqFromRLE (RLE DS.Empty) = do
   fbrleseqstackempty  <- emptyFSTRLESeq
   fbrleseqstackemptyr <- readSTRef fbrleseqstackempty
@@ -282,6 +297,7 @@ seqFromRLE xs              = do
   fbrleseqstackr <- readSTRef fbrleseqstack
   return fbrleseqstackr
     where
+      iFRLE :: Seq (Maybe b) -> STRef s (RLESeq b) -> ST s ()
       iFRLE (y1 DS.:<| y2 DS.:<| DS.Empty) fbrless =
         if | isJust y1    &&
              isNothing y2
@@ -289,8 +305,8 @@ seqFromRLE xs              = do
                                 Nothing
                  pure ()
            | otherwise
-           -> do let y1' = read        $
-                           unpck $
+           -> do let y1' = read $
+                           toString $
                            fromJust y1 :: Int
                  let y2' = fromJust y2
                  CM.replicateM_ y1'
@@ -306,7 +322,7 @@ seqFromRLE xs              = do
                         fbrless
            | otherwise
            -> do let y1' = read        $
-                           unpck $
+                           toString $
                            fromJust y1 :: Int
                  let y2' = fromJust y2
                  CM.replicateM_ y1'
