@@ -39,7 +39,6 @@ module Data.BWT ( -- * To BWT functions
 import Data.BWT.Internal
 
 import Control.Monad()
-import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS (ByteString,concat,pack,unpack)
 import Data.Foldable as DFold (toList)
@@ -98,7 +97,7 @@ fromBWT :: Ord a
         => BWT a
         -> [a]
 fromBWT bwt = do
-  let originall = CMST.runST $ magicInverseBWT magicsz
+  let originall = magicInverseBWT magicsz
   DFold.toList originall
     where
       magicsz = DS.unstableSortBy (\(a,b) (c,d) -> sortTB (a,b) (c,d))

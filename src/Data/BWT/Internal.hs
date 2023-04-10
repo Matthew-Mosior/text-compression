@@ -192,12 +192,12 @@ emptySTBWTCounter = newSTRef (-1)
 
 -- | "Magic" Inverse BWT function.
 magicInverseBWT :: Seq (Maybe a,Int)
-                -> ST s (BWTSeq a)
-magicInverseBWT DS.Empty = do
+                -> BWTSeq a
+magicInverseBWT DS.Empty = CMST.runST $ do
   bwtseqstackempty  <- emptySTBWTSeq
   bwtseqstackemptyr <- readSTRef bwtseqstackempty
   return bwtseqstackemptyr
-magicInverseBWT xs       = do
+magicInverseBWT xs       = CMST.runST $ do
   bwtseqstack      <- emptySTBWTSeq
   bwtcounterstackf <- emptySTBWTCounter
   bwtcounterstacke <- emptySTBWTCounter

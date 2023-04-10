@@ -67,7 +67,6 @@ import Data.BWT.Internal
 import Data.MTF.Internal
 
 import Control.Monad()
-import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS
 import Data.ByteString.Char8()
@@ -114,7 +113,7 @@ textToBWTToMTFT = textBWTToMTFT . textToBWT
 textBWTToMTFB :: TextBWT
               -> MTFB
 textBWTToMTFB xs =
-  MTFB (CMST.runST $ seqToMTFB xss)
+  MTFB (seqToMTFB xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -131,7 +130,7 @@ textBWTToMTFB xs =
 bytestringBWTToMTFB :: BWT Word8
                     -> MTFB
 bytestringBWTToMTFB xs =
-  MTFB (CMST.runST $ seqToMTFB xss)
+  MTFB (seqToMTFB xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -147,7 +146,7 @@ bytestringBWTToMTFB xs =
 textBWTToMTFT :: TextBWT
               -> MTFT
 textBWTToMTFT xs =
-  MTFT (CMST.runST $ seqToMTFT xss)
+  MTFT (seqToMTFT xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -165,7 +164,7 @@ textBWTToMTFT xs =
 bytestringBWTToMTFT :: BWT Word8
                     -> MTFT
 bytestringBWTToMTFT xs =
-  MTFT (CMST.runST $ seqToMTFT xss)
+  MTFT (seqToMTFT xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -182,7 +181,7 @@ textToMTFB :: Seq (Maybe Text)
            -> MTFB
 textToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
 textToMTFB xs       =
-  MTFB (CMST.runST $ seqToMTFB xss)
+  MTFB (seqToMTFB xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -198,21 +197,21 @@ bytestringToMTFB :: Seq (Maybe ByteString)
                  -> MTFB
 bytestringToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
 bytestringToMTFB xs       =
- MTFB (CMST.runST $ seqToMTFB xs)
+ MTFB (seqToMTFB xs)
 
 -- | Takes a 'Text' and returns the Move-to-front transform ('MTFT').
 textToMTFT :: Seq (Maybe Text)
            -> MTFT
 textToMTFT DS.Empty = MTFT (DS.Empty,DS.Empty)
 textToMTFT xs       =
-  MTFT (CMST.runST $ seqToMTFT xs)
+  MTFT (seqToMTFT xs)
 
 -- | Takes a 'ByteString' and returns the Move-to-front transform ('MTFT').
 bytestringToMTFT :: Seq (Maybe ByteString)
                  -> MTFT
 bytestringToMTFT DS.Empty = MTFT (DS.Empty,DS.Empty)
 bytestringToMTFT xs       =
-  MTFT (CMST.runST $ seqToMTFT xss)
+  MTFT (seqToMTFT xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -269,7 +268,7 @@ textBWTFromMTFT :: MTFT
 textBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFT xs                  =
-  BWT (CMST.runST $ seqFromMTFT xs)
+  BWT (seqFromMTFT xs)
 
 -- | Takes a 'MTFT' and returns
 -- the 'BWT' of 'ByteString's.
@@ -278,7 +277,7 @@ bytestringBWTFromMTFT :: MTFT
 bytestringBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFT xs                  = do
-  let originalbwtb = CMST.runST $ seqFromMTFT xs
+  let originalbwtb = seqFromMTFT xs
   BWT (fmap (\x -> if | isNothing x
                       -> Nothing
                       | otherwise
@@ -294,7 +293,7 @@ textBWTFromMTFB :: MTFB
 textBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFB xs                  = do
-  let originalbwtt = CMST.runST $ seqFromMTFB xs
+  let originalbwtt = seqFromMTFB xs
   BWT (fmap (\x -> if | isNothing x
                       -> Nothing
                       | otherwise
@@ -310,7 +309,7 @@ bytestringBWTFromMTFB :: MTFB
 bytestringBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFB xs              =
-  BWT (CMST.runST $ seqFromMTFB xs)
+  BWT (seqFromMTFB xs)
 
 -- | Takes a 'MTFB' and returns
 -- the original 'Seq' of 'Text's.
@@ -319,7 +318,7 @@ textFromMTFB :: MTFB
 textFromMTFB (MTFB (DS.Empty,_)) = DS.Empty
 textFromMTFB (MTFB (_,DS.Empty)) = DS.Empty
 textFromMTFB xs                  = do
-  let originalt = CMST.runST $ seqFromMTFB xs
+  let originalt = seqFromMTFB xs
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise
@@ -335,7 +334,7 @@ bytestringFromMTFB :: MTFB
 bytestringFromMTFB (MTFB (DS.Empty,_)) = DS.Empty
 bytestringFromMTFB (MTFB (_,DS.Empty)) = DS.Empty
 bytestringFromMTFB xs                  =
-  CMST.runST $ seqFromMTFB xs
+  seqFromMTFB xs
 
 -- | Takes a 'MTFT' and returns
 -- the original 'Seq' of 'Text's.
@@ -344,7 +343,7 @@ textFromMTFT :: MTFT
 textFromMTFT (MTFT (DS.Empty,_)) = DS.Empty
 textFromMTFT (MTFT (_,DS.Empty)) = DS.Empty
 textFromMTFT xs                  =
-  CMST.runST $ seqFromMTFT xs
+  seqFromMTFT xs
 
 -- | Takes a 'MTFT' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -353,7 +352,7 @@ bytestringFromMTFT :: MTFT
 bytestringFromMTFT (MTFT (DS.Empty,_)) = DS.Empty
 bytestringFromMTFT (MTFT (_,DS.Empty)) = DS.Empty
 bytestringFromMTFT xs                  = do
-  let originalb = CMST.runST $ seqFromMTFT xs
+  let originalb = seqFromMTFT xs
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise

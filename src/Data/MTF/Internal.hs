@@ -222,12 +222,12 @@ emptySTMTFCounterB = newSTRef (-1)
 
 -- | Strict state monad function.
 seqToMTFB :: PBMTFSeqB
-          -> ST s MTFLSSeqB
-seqToMTFB DS.Empty      = do
+          -> MTFLSSeqB
+seqToMTFB DS.Empty      = CMST.runST $ do
   bmtfseqstackempty  <- emptySTMTFLSSeqB
   bmtfseqstackemptyr <- readSTRef bmtfseqstackempty
   return bmtfseqstackemptyr
-seqToMTFB xs            = do
+seqToMTFB xs            = CMST.runST $ do
   bmtfseqstack     <- emptySTMTFLSSeqB
   bmtfinitiallist  <- emptySTMTFILB
   bmtfcounterstack <- emptySTMTFCounterB
@@ -346,12 +346,12 @@ emptySTMTFCounterT = newSTRef (-1)
 
 -- | Strict state monad function.
 seqToMTFT :: PTMTFSeqT
-          -> ST s MTFLSSeqT
-seqToMTFT DS.Empty      = do
+          -> MTFLSSeqT
+seqToMTFT DS.Empty      = CMST.runST $ do
   tmtfseqstackempty  <- emptySTMTFLSSeqT
   tmtfseqstackemptyr <- readSTRef tmtfseqstackempty
   return tmtfseqstackemptyr
-seqToMTFT xs            = do
+seqToMTFT xs            = CMST.runST $ do
   tmtfseqstack     <- emptySTMTFLSSeqT
   tmtfinitiallist  <- emptySTMTFILT
   tmtfcounterstack <- emptySTMTFCounterT
@@ -450,16 +450,16 @@ emptyFSTMTFILB = newSTRef DS.empty
 
 -- | Strict state monad function.
 seqFromMTFB :: MTFB
-            -> ST s FMTFSeqB
-seqFromMTFB (MTFB (DS.Empty,_)) = do
+            -> FMTFSeqB
+seqFromMTFB (MTFB (DS.Empty,_)) = CMST.runST $ do
   fbmtfseqstackempty  <- emptyFSTMTFSeqB
   fbmtfseqstackemptyr <- readSTRef fbmtfseqstackempty
   return fbmtfseqstackemptyr
-seqFromMTFB (MTFB (_,DS.Empty)) = do
+seqFromMTFB (MTFB (_,DS.Empty)) = CMST.runST $ do
   fbmtfseqstackempty  <- emptyFSTMTFSeqB
   fbmtfseqstackemptyr <- readSTRef fbmtfseqstackempty
   return fbmtfseqstackemptyr
-seqFromMTFB xs                  = do
+seqFromMTFB xs                  = CMST.runST $ do
   let xss = (\(MTFB b) -> b) xs
   fbmtfseqstack     <- emptyFSTMTFSeqB
   fbmtfinitiallist  <- emptyFSTMTFILB
@@ -535,16 +535,16 @@ emptyFSTMTFILT = newSTRef DS.empty
 
 -- | Strict state monad function.
 seqFromMTFT :: MTFT
-            -> ST s FMTFSeqT
-seqFromMTFT (MTFT (DS.Empty,_)) = do
+            -> FMTFSeqT
+seqFromMTFT (MTFT (DS.Empty,_)) = CMST.runST $ do
   ftmtfseqstackempty  <- emptyFSTMTFSeqT
   ftmtfseqstackemptyr <- readSTRef ftmtfseqstackempty
   return ftmtfseqstackemptyr
-seqFromMTFT (MTFT (_,DS.Empty)) = do
+seqFromMTFT (MTFT (_,DS.Empty)) = CMST.runST $ do
   ftmtfseqstackempty  <- emptyFSTMTFSeqT
   ftmtfseqstackemptyr <- readSTRef ftmtfseqstackempty
   return ftmtfseqstackemptyr
-seqFromMTFT xs                  = do
+seqFromMTFT xs                  = CMST.runST $ do
   let xss = (\(MTFT t) -> t) xs
   ftmtfseqstack     <- emptyFSTMTFSeqT
   ftmtfinitiallist  <- emptyFSTMTFILT

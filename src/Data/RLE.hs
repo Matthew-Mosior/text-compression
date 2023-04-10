@@ -66,7 +66,6 @@ import Data.BWT.Internal
 import Data.RLE.Internal
 
 import Control.Monad()
-import Control.Monad.ST as CMST
 import Control.Monad.State.Strict()
 import Data.ByteString as BS
 import Data.ByteString.Char8()
@@ -114,7 +113,7 @@ textToBWTToRLET = textBWTToRLET . textToBWT
 textBWTToRLEB :: TextBWT
               -> RLE ByteString
 textBWTToRLEB xs =
-  RLE (CMST.runST $ seqToRLE xss)
+  RLE (seqToRLE xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -132,7 +131,7 @@ bytestringBWTToRLEB :: BWT Word8
                     -> RLE ByteString
 bytestringBWTToRLEB (BWT DS.Empty) = RLE DS.Empty
 bytestringBWTToRLEB xs             =
-  RLE (CMST.runST $ seqToRLE xss)
+  RLE (seqToRLE xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -148,7 +147,7 @@ bytestringBWTToRLEB xs             =
 textBWTToRLET :: TextBWT
               -> RLE Text
 textBWTToRLET xs =
-  RLE (CMST.runST $ seqToRLE xss)
+  RLE (seqToRLE xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -167,7 +166,7 @@ bytestringBWTToRLET :: BWT Word8
                     -> RLE Text
 bytestringBWTToRLET (BWT DS.Empty) = RLE DS.Empty
 bytestringBWTToRLET xs             =
-  RLE (CMST.runST $ seqToRLE xss)
+  RLE (seqToRLE xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -184,7 +183,7 @@ textToRLEB :: Seq (Maybe Text)
            -> RLE ByteString
 textToRLEB DS.Empty = RLE DS.Empty
 textToRLEB xs       =
-  RLE (CMST.runST $ seqToRLE xss)
+  RLE (seqToRLE xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -200,21 +199,21 @@ bytestringToRLEB :: Seq (Maybe ByteString)
                  -> RLE ByteString
 bytestringToRLEB DS.Empty = RLE DS.Empty
 bytestringToRLEB xs       =
- RLE (CMST.runST $ seqToRLE xs)
+ RLE (seqToRLE xs)
 
 -- | Takes a 'Text' and returns the Run-length encoding (RLE).
 textToRLET :: Seq (Maybe Text)
            -> RLE Text
 textToRLET DS.Empty = RLE DS.Empty
 textToRLET xs       =
-  RLE (CMST.runST $ seqToRLE xs)
+  RLE (seqToRLE xs)
 
 -- | Takes a 'ByteString' and returns the Run-length encoding (RLE).
 bytestringToRLET :: Seq (Maybe ByteString)
                  -> RLE Text
 bytestringToRLET DS.Empty = RLE DS.Empty
 bytestringToRLET xs       =
-  RLE (CMST.runST $ seqToRLE xss)
+  RLE (seqToRLE xss)
     where
       xss = fmap (\x -> if | isNothing x
                            -> Nothing
@@ -270,7 +269,7 @@ textBWTFromRLET :: RLE Text
                 -> BWT Text
 textBWTFromRLET (RLE DS.Empty) = BWT DS.Empty
 textBWTFromRLET xs              =
-  BWT (CMST.runST $ seqFromRLE xs)
+  BWT (seqFromRLE xs)
 
 -- | Takes a 'RLE' and returns
 -- the 'BWT' of 'ByteString's.
@@ -278,7 +277,7 @@ bytestringBWTFromRLET :: RLE Text
                       -> BWT ByteString
 bytestringBWTFromRLET (RLE DS.Empty) = BWT DS.Empty
 bytestringBWTFromRLET xs              = do
-  let originalbwtb = CMST.runST $ seqFromRLE xs
+  let originalbwtb = seqFromRLE xs
   BWT (fmap (\x -> if | isNothing x
                       -> Nothing
                       | otherwise
@@ -293,7 +292,7 @@ textBWTFromRLEB :: RLE ByteString
                 -> BWT Text
 textBWTFromRLEB (RLE DS.Empty) = BWT DS.Empty
 textBWTFromRLEB xs              = do
-  let originalbwtt = CMST.runST $ seqFromRLE xs
+  let originalbwtt = seqFromRLE xs
   BWT (fmap (\x -> if | isNothing x
                       -> Nothing
                       | otherwise
@@ -308,7 +307,7 @@ bytestringBWTFromRLEB :: RLE ByteString
                       -> BWT ByteString
 bytestringBWTFromRLEB (RLE DS.Empty) = BWT DS.Empty
 bytestringBWTFromRLEB xs              =
-  BWT (CMST.runST $ seqFromRLE xs)
+  BWT (seqFromRLE xs)
 
 -- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'Text's.
@@ -316,7 +315,7 @@ textFromRLEB :: RLE ByteString
              -> Seq (Maybe Text)
 textFromRLEB (RLE DS.Empty) = DS.Empty
 textFromRLEB xs              = do
-  let originalt = CMST.runST $ seqFromRLE xs
+  let originalt = seqFromRLE xs
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise
@@ -331,7 +330,7 @@ bytestringFromRLEB :: RLE ByteString
                    -> Seq (Maybe ByteString)
 bytestringFromRLEB (RLE DS.Empty) = DS.Empty
 bytestringFromRLEB xs              =
-  CMST.runST $ seqFromRLE xs
+  seqFromRLE xs
 
 -- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'Text's.
@@ -339,7 +338,7 @@ textFromRLET :: RLE Text
              -> Seq (Maybe Text)
 textFromRLET (RLE DS.Empty) = DS.Empty
 textFromRLET xs              =
-  CMST.runST $ seqFromRLE xs
+  seqFromRLE xs
 
 -- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -347,7 +346,7 @@ bytestringFromRLET :: RLE Text
                    -> Seq (Maybe ByteString)
 bytestringFromRLET (RLE DS.Empty) = DS.Empty
 bytestringFromRLET xs              = do
-  let originalb = CMST.runST $ seqFromRLE xs
+  let originalb = seqFromRLE xs
   fmap (\x -> if | isNothing x
                  -> Nothing
                  | otherwise

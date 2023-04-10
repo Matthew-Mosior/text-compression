@@ -167,12 +167,12 @@ emptySTRLECounter :: ST s (STRLECounter b s Int)
 emptySTRLECounter = newSTRef (-1)
 
 -- | Strict state monad function.
-seqToRLE :: forall b s. Pack b => RLESeq b -> ST s (RLESeq b)
-seqToRLE DS.Empty      = do
+seqToRLE :: forall b. Pack b => RLESeq b -> RLESeq b
+seqToRLE DS.Empty      = CMST.runST $ do
   brleseqstackempty  <- emptySTRLESeq
   brleseqstackemptyr <- readSTRef brleseqstackempty
   return brleseqstackemptyr
-seqToRLE (x DS.:<| xs) = do
+seqToRLE (x DS.:<| xs) = CMST.runST $ do
   brleseqstack     <- emptySTRLESeq
   brlecounterstack <- emptySTRLECounter
   brletempstack    <- emptySTRLETemp
@@ -284,12 +284,12 @@ emptyFSTRLESeq :: ST s (FSTRLESeq b s a)
 emptyFSTRLESeq = newSTRef DS.empty
 
 -- | Strict state monad function.
-seqFromRLE :: forall b s. Pack b => RLE b -> ST s (FRLESeq b)
-seqFromRLE (RLE DS.Empty) = do
+seqFromRLE :: forall b. Pack b => RLE b -> FRLESeq b
+seqFromRLE (RLE DS.Empty) = CMST.runST $ do
   fbrleseqstackempty  <- emptyFSTRLESeq
   fbrleseqstackemptyr <- readSTRef fbrleseqstackempty
   return fbrleseqstackemptyr
-seqFromRLE xs              = do
+seqFromRLE xs              = CMST.runST $ do
   fbrleseqstack <- emptySTRLESeq
   let rlebseq = (\(RLE b) -> b) xs
   iFRLE rlebseq
