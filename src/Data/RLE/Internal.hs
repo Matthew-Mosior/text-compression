@@ -66,11 +66,8 @@ module Data.RLE.Internal ( -- * Base RLE types
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS
 import Data.ByteString.Char8 as BSC8 (pack,unpack)
-import Data.ByteString.Internal()
-import Data.List()
 import Data.Maybe as DMaybe (fromJust,isJust,isNothing)
 import Data.Sequence as DS (Seq(..),empty,(|>))
 import Data.Sequence.Internal as DSI

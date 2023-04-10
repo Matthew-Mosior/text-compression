@@ -95,16 +95,11 @@ import Data.FMIndex.Internal (FMIndexB(FMIndexB), FMIndexT(FMIndexT), CcT(CcT), 
                               seqToOccCKB,
                               seqToOccCKT)
 import Control.Concurrent as CC (getNumCapabilities)
-import Control.Monad()
-import Control.Monad.State.Strict()
 import Control.Parallel.Strategies as CPS
 import Data.ByteString as BS
 import Data.ByteString.Char8 as BSC8 (singleton,uncons,unpack)
-import Data.Char()
-import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..),ViewL(..),fromList,index,viewl,(<|))
-import Data.STRef()
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)

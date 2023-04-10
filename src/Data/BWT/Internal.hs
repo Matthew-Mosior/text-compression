@@ -63,9 +63,6 @@ module Data.BWT.Internal ( -- * Base BWT types
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
-import Data.Foldable()
-import Data.List()
 import Data.Maybe as DMaybe (fromJust,isNothing)
 import Data.Sequence as DS (Seq(..),empty,findIndexL,fromList,length,index,inits,null,tails,unstableSortBy,unstableSortOn,zip,(><),(|>),(<|))
 import Data.STRef as DSTR

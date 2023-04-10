@@ -65,15 +65,9 @@ import Data.BWT hiding (tests)
 import Data.BWT.Internal
 import Data.RLE.Internal
 
-import Control.Monad()
-import Control.Monad.State.Strict()
 import Data.ByteString as BS
-import Data.ByteString.Char8()
-import Data.Char()
-import Data.Foldable()
 import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..))
-import Data.STRef()
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)

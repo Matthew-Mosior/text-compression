@@ -38,12 +38,9 @@ module Data.BWT ( -- * To BWT functions
 
 import Data.BWT.Internal
 
-import Control.Monad()
-import Control.Monad.State.Strict()
 import Data.ByteString as BS (ByteString,concat,pack,unpack)
 import Data.Foldable as DFold (toList)
 import Data.Sequence as DS (Seq(..),fromList,iterateN,length,unstableSortBy,zip)
-import Data.STRef()
 import Data.Text (Text)
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)

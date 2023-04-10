@@ -95,16 +95,10 @@ module Data.MTF.Internal ( -- * Base MTF types
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS
-import Data.ByteString.Char8()
-import Data.ByteString.Internal()
 import Data.Foldable as DFold (foldr')
-import Data.List()
-import Data.Maybe()
 import Data.Set as DSet
 import Data.Sequence as DS (Seq(..),deleteAt,findIndexL,empty,index,unstableSort,(|>),(<|))
-import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
 import Data.Text as DText
 import GHC.Generics (Generic)

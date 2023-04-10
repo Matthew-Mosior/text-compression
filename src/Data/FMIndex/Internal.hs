@@ -258,13 +258,7 @@ import Data.MTF.Internal
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS hiding (count)
-import Data.ByteString.Char8()
-import Data.ByteString.Internal()
-import Data.Foldable()
-import Data.List()
-import Data.Maybe()
 import Data.Sequence as DS (Seq(..),ViewL(..),ViewR(..),empty,findIndexL,fromList,index,length,(|>))
 import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
