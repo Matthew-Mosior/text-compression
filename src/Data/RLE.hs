@@ -66,7 +66,6 @@ import Data.BWT.Internal
 import Data.RLE.Internal
 
 import Data.ByteString as BS
-import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..))
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
@@ -109,15 +108,8 @@ textBWTToRLEB :: TextBWT
 textBWTToRLEB xs =
   RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) $
-            ((\(TextBWT t) -> t) xs))
+      xss = fmap (fmap BS.singleton)
+              ((\(BWT t) -> t) $ ((\(TextBWT t) -> t) xs))
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
@@ -127,14 +119,7 @@ bytestringBWTToRLEB (BWT DS.Empty) = RLE DS.Empty
 bytestringBWTToRLEB xs             =
   RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) xs)
+      xss = fmap (fmap BS.singleton) ((\(BWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
@@ -143,16 +128,8 @@ textBWTToRLET :: TextBWT
 textBWTToRLET xs =
   RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) $
-            ((\(TextBWT t) -> t) xs))
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
+             ((\(BWT t) -> t) $ ((\(TextBWT t) -> t) xs))
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLET').
@@ -162,15 +139,7 @@ bytestringBWTToRLET (BWT DS.Empty) = RLE DS.Empty
 bytestringBWTToRLET xs             =
   RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) xs)
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton)) ((\(BWT t) -> t) xs)
 
 -- | Takes a 'Text' and returns the Run-length encoding ('RLEB').
 textToRLEB :: Seq (Maybe Text)
@@ -179,14 +148,7 @@ textToRLEB DS.Empty = RLE DS.Empty
 textToRLEB xs       =
   RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just            $
-                               DTE.encodeUtf8 $
-                               fromJust x
-                 )
-            xs
+      xss = fmap (fmap DTE.encodeUtf8) xs
 
 -- | Takes a 'Seq' of 'ByteString's and returns the Run-length encoding ('RLEB').
 bytestringToRLEB :: Seq (Maybe ByteString)
@@ -209,14 +171,7 @@ bytestringToRLET DS.Empty = RLE DS.Empty
 bytestringToRLET xs       =
   RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              fromJust x
-                 )
-            xs
+      xss = fmap (fmap DTE.decodeUtf8) xs
 
 {-------------------}
 
@@ -235,14 +190,7 @@ bytestringFromBWTFromRLET :: RLE Text
                           -> ByteString
 bytestringFromBWTFromRLET xs = bytestringFromByteStringBWT $
                                BWT                         $
-                               fmap (\x -> if | isNothing x
-                                              -> Nothing
-                                              | otherwise
-                                              -> Just           $
-                                                 DTE.encodeUtf8 $
-                                                 fromJust x
-                                    )
-                                                           $
+                               fmap (fmap DTE.encodeUtf8)  $
                             ((\(BWT t) -> t) (textBWTFromRLET xs))
 
 -- | Helper function for converting a 'BWT'ed 'RLEB'
@@ -272,13 +220,7 @@ bytestringBWTFromRLET :: RLE Text
 bytestringBWTFromRLET (RLE DS.Empty) = BWT DS.Empty
 bytestringBWTFromRLET xs              = do
   let originalbwtb = seqFromRLE xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.encodeUtf8 $
-                        fromJust x
-            ) originalbwtb)
+  BWT (fmap (fmap DTE.encodeUtf8) originalbwtb)
 
 -- | Takes a 'RLEB' and returns
 -- the 'BWT' of 'Text's.
@@ -287,13 +229,7 @@ textBWTFromRLEB :: RLE ByteString
 textBWTFromRLEB (RLE DS.Empty) = BWT DS.Empty
 textBWTFromRLEB xs              = do
   let originalbwtt = seqFromRLE xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.decodeUtf8 $
-                        fromJust x
-            ) originalbwtt)
+  BWT (fmap (fmap DTE.decodeUtf8) originalbwtt)
 
 -- | Take a 'RLE' and returns
 -- the 'BWT' of 'ByteString's.
@@ -310,13 +246,7 @@ textFromRLEB :: RLE ByteString
 textFromRLEB (RLE DS.Empty) = DS.Empty
 textFromRLEB xs              = do
   let originalt = seqFromRLE xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $
-                    DTE.decodeUtf8 $
-                    fromJust x
-       ) originalt
+  fmap (fmap DTE.decodeUtf8) originalt
 
 -- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -341,13 +271,7 @@ bytestringFromRLET :: RLE Text
 bytestringFromRLET (RLE DS.Empty) = DS.Empty
 bytestringFromRLET xs              = do
   let originalb = seqFromRLE xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $
-                    DTE.encodeUtf8 $
-                    fromJust x
-       ) originalb
+  fmap (fmap DTE.encodeUtf8) originalb
 
 {---------------------}
 

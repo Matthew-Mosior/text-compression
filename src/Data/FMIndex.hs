@@ -98,7 +98,6 @@ import Control.Concurrent as CC (getNumCapabilities)
 import Control.Parallel.Strategies as CPS
 import Data.ByteString as BS
 import Data.ByteString.Char8 as BSC8 (singleton,uncons,unpack)
-import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..),ViewL(..),fromList,index,viewl,(<|))
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
@@ -158,20 +157,8 @@ textBWTToFMIndexB bwm                  xs = do
                             (xh DS.:< _) -> xh
                    ) $
               (\(BWTMatrix m) -> m) bwm
-      bwmff = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just         $
-                                BS.singleton $
-                                fromJust x
-                   ) bwmf
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
+      bwmff = fmap (fmap BS.singleton) bwmf
+      xss = fmap (fmap BS.singleton)
             ((\(BWT t) -> t) $
             ((\(TextBWT t) -> t) xs))
 
@@ -196,20 +183,8 @@ bytestringBWTToFMIndexB bwm                  xs = do
                             (xh DS.:< _) -> xh
                    ) $
               (\(BWTMatrix m) -> m) bwm
-      bwmff = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just         $
-                                BS.singleton $
-                                fromJust x
-                   ) bwmf
-      xss   = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just         $
-                                BS.singleton $
-                                fromJust x
-                   )
+      bwmff = fmap (fmap BS.singleton) bwmf
+      xss   = fmap (fmap BS.singleton)
               ((\(BWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
@@ -233,22 +208,8 @@ textBWTToFMIndexT bwm                  xs = do
                             (xh DS.:< _) -> xh
                    ) $
               (\(BWTMatrix m) -> m) bwm
-      bwmff = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just           $
-                                DTE.decodeUtf8 $
-                                BS.singleton   $
-                                fromJust x
-                   ) bwmf
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
+      bwmff = fmap (fmap (DTE.decodeUtf8 . BS.singleton)) bwmf
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
             ((\(BWT t) -> t) $
             ((\(TextBWT t) -> t) xs))
 
@@ -274,22 +235,8 @@ bytestringBWTToFMIndexT bwm                  xs = do
                             (xh DS.:< _) -> xh
                    ) $
               (\(BWTMatrix m) -> m) bwm
-      bwmff = fmap (\x -> if | isNothing x
-                             -> Nothing
-                             | otherwise
-                             -> Just           $
-                                DTE.decodeUtf8 $
-                                BS.singleton   $
-                                fromJust x
-                   ) bwmf
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
+      bwmff = fmap (fmap (DTE.decodeUtf8 . BS.singleton)) bwmf
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
             ((\(BWT t) -> t) xs)
 
 {-----------------------}
@@ -308,15 +255,8 @@ bytestringFromBWTFromFMIndexB = bytestringFromByteStringBWT . bytestringBWTFromF
 bytestringFromBWTFromFMIndexT :: FMIndexT
                               -> ByteString
 bytestringFromBWTFromFMIndexT xs = bytestringFromByteStringBWT $
-                                   BWT                             $
-                                   fmap (\x -> if | isNothing x
-                                                  -> Nothing
-                                                  | otherwise
-                                                  -> Just           $
-                                                     DTE.encodeUtf8 $
-                                                     fromJust x
-                                        )
-                                                           $
+                                   BWT                         $
+                                   fmap (fmap DTE.encodeUtf8)  $
                                    ((\(BWT t) -> t) (textBWTFromFMIndexT xs))
 
 -- | Helper function for converting a 'BWT'ed 'FMIndexB'
@@ -350,13 +290,7 @@ bytestringBWTFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = BWT DS.Empty
 bytestringBWTFromFMIndexT xs                               = do
   let originalbwtb = seqFromFMIndexT xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.encodeUtf8 $
-                         fromJust x
-            ) originalbwtb)
+  BWT (fmap (fmap DTE.encodeUtf8) originalbwtb)
 
 -- | Takes a 'FMIndexB' and returns
 -- the 'BWT' of 'Text's.
@@ -367,13 +301,7 @@ textBWTFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = BWT DS.Empty
 textBWTFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = BWT DS.Empty
 textBWTFromFMIndexB xs                               = do
   let originalbwtt = seqFromFMIndexB xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.decodeUtf8 $
-                         fromJust x
-            ) originalbwtt)
+  BWT (fmap (fmap DTE.decodeUtf8) originalbwtt)
 
 -- | Take a 'FMIndexB' and returns
 -- the 'BWT' of 'ByteString's.
@@ -394,13 +322,7 @@ textFromFMIndexB (FMIndexB (_,OccCKB DS.Empty,_)) = DS.Empty
 textFromFMIndexB (FMIndexB (_,_,SAB DS.Empty))    = DS.Empty
 textFromFMIndexB xs                               = do
   let originalt = seqFromFMIndexB xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $
-                    DTE.decodeUtf8 $
-                    fromJust x
-       ) originalt
+  fmap (fmap DTE.decodeUtf8) originalt
 
 -- | Takes a 'FMIndexB' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -431,13 +353,7 @@ bytestringFromFMIndexT (FMIndexT (_,OccCKT DS.Empty,_)) = DS.Empty
 bytestringFromFMIndexT (FMIndexT (_,_,SAT DS.Empty))    = DS.Empty
 bytestringFromFMIndexT xs                               = do
   let originalb = seqFromFMIndexT xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $
-                    DTE.encodeUtf8 $
-                    fromJust x
-       ) originalb
+  fmap (fmap DTE.encodeUtf8) originalb
 
 {-------------------------}
 
@@ -582,13 +498,7 @@ bytestringFMIndexLocateS allpats input                    = do
                           BSC8.unpack currentpat
         let indices     = locateFMIndexB patternf
                                                  bfmi
-        let indicesf    = fmap (\x -> if | isNothing x
-                                         -> Nothing
-                                         | otherwise
-                                         -> Just           $
-                                            suffixstartpos $
-                                            DS.index bsa ((fromJust x) - 1)
-                               ) indices
+        let indicesf    = fmap (fmap (\x -> suffixstartpos $ DS.index bsa (x - 1))) indices
         (currentpat,indicesf) DS.<| (iBFML restofpats bsa bfmi)
 
 -- | Takes a list of pattern(s) of 'Text's
@@ -618,13 +528,7 @@ textFMIndexLocateS allpats input = do
                           DText.unpack currentpat
         let indices     = locateFMIndexT patternf
                                                  tfmi
-        let indicesf    = fmap (\x -> if | isNothing x
-                                         -> Nothing
-                                         | otherwise
-                                         -> Just           $
-                                            suffixstartpos $
-                                            DS.index tsa ((fromJust x) - 1)
-                               ) indices
+        let indicesf    = fmap (fmap (\x -> suffixstartpos $ DS.index tsa (x - 1))) indices
         (currentpat,indicesf) DS.<| (iTFML restofpats tsa tfmi)
 
 -- | Takes a list of pattern(s) of 'ByteString's
@@ -660,13 +564,7 @@ bytestringFMIndexLocateP allpats input                    = do
                           BSC8.unpack currentpat
         let indices     = locateFMIndexB patternf
                                                  bfmi
-        let indicesf    = fmap (\x -> if | isNothing x
-                                         -> Nothing
-                                         | otherwise
-                                         -> Just           $
-                                            suffixstartpos $
-                                            DS.index bsa ((fromJust x) - 1)
-                               ) indices
+        let indicesf    = fmap (fmap (\x -> suffixstartpos $ DS.index bsa (x - 1))) indices
         (currentpat,indicesf) : (iBFML restofpats bsa bfmi)
 
 -- | Takes a list of pattern(s) of 'Text's
@@ -702,13 +600,7 @@ textFMIndexLocateP allpats input = do
                           DText.unpack currentpat
         let indices     = locateFMIndexT patternf
                                                  tfmi
-        let indicesf    = fmap (\x -> if | isNothing x
-                                         -> Nothing
-                                         | otherwise
-                                         -> Just           $
-                                            suffixstartpos $
-                                            DS.index tsa ((fromJust x) - 1)
-                               ) indices
+        let indicesf    = fmap (fmap (\x -> suffixstartpos $ DS.index tsa (x - 1))) indices
         (currentpat,indicesf) : (iTFML restofpats tsa tfmi)
 
 {--------------------}
