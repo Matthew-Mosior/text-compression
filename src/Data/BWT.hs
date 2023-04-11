@@ -2,6 +2,8 @@
 {-# LANGUAGE MultiWayIf    #-}
 {-# LANGUAGE ViewPatterns  #-}
 {-# LANGUAGE Strict        #-}
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 
 -- |
@@ -12,7 +14,7 @@
 -- Portability :  portable
 --
 -- = Burrows-Wheeler Transform (BWT)
--- 
+--
 -- The two functions that most users will utilize are 'toBWT' and 'fromBWT'.
 -- There are auxilary function(s) inside of @"Data.BWT.Internal"@.
 --
@@ -30,22 +32,20 @@ module Data.BWT ( -- * To BWT functions
                   fromBWT,
                   bytestringFromWord8BWT,
                   bytestringFromByteStringBWT,
-                  textFromBWT
+                  textFromBWT,
+                  tests
                 ) where
 
 import Data.BWT.Internal
 
-import Control.Monad()
-import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS (ByteString,concat,pack,unpack)
 import Data.Foldable as DFold (toList)
 import Data.Sequence as DS (Seq(..),fromList,iterateN,length,unstableSortBy,zip)
-import Data.STRef()
 import Data.Text (Text)
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import GHC.Generics(Generic)
+import Test.HUnit
 
 
 {-toBWT Function(s)-}
@@ -86,7 +86,7 @@ textToBWT = TextBWT . bytestringToBWT . DTE.encodeUtf8
 {-fromBWT function(s)-}
 
 -- | Takes a BWT data type (please see @"Data.BWT.Internal"@) and inverts it back to the original string.
--- 
+--
 -- This function utilizes the state monad (strict) in order
 -- to implement the [Magic](https://www.youtube.com/watch?v=QwSsppKrCj4) Inverse BWT algorithm by backtracking
 -- indices starting with the (__Nothing__,_) entry.
@@ -94,7 +94,7 @@ fromBWT :: Ord a
         => BWT a
         -> [a]
 fromBWT bwt = do
-  let originall = CMST.runST $ magicInverseBWT magicsz
+  let originall = magicInverseBWT magicsz
   DFold.toList originall
     where
       magicsz = DS.unstableSortBy (\(a,b) (c,d) -> sortTB (a,b) (c,d))
@@ -123,3 +123,6 @@ textFromBWT (TextBWT x) = DTE.decodeUtf8 $
                           bytestringFromWord8BWT x
 
 {---------------------}
+
+tests :: Test
+tests = TestList []

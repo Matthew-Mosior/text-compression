@@ -58,14 +58,11 @@ module Data.BWT.Internal ( -- * Base BWT types
                            emptySTBWTCounter,
                            magicInverseBWT,
                            -- * Create BWT Matrix function
-                           createBWTMatrix 
+                           createBWTMatrix
                          ) where
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
-import Data.Foldable() 
-import Data.List()
 import Data.Maybe as DMaybe (fromJust,isNothing)
 import Data.Sequence as DS (Seq(..),empty,findIndexL,fromList,length,index,inits,null,tails,unstableSortBy,unstableSortOn,zip,(><),(|>),(<|))
 import Data.STRef as DSTR
@@ -105,7 +102,7 @@ newtype BWTMatrix a = BWTMatrix (Seq (Seq (Maybe a)))
 -- | Computes the Burrows-Wheeler Transform (BWT) using the suffix array
 -- and the original string (represented as a 'DS.Seq' for performance).
 saToBWT :: SuffixArray a
-        -> Seq a        
+        -> Seq a
         -> Seq (Maybe a)
 saToBWT DS.Empty      _ = DS.Empty
 saToBWT (y DS.:<| ys) t =
@@ -117,7 +114,7 @@ saToBWT (y DS.:<| ys) t =
         DS.<| (saToBWT ys t)
 
 -- | Computes the corresponding 'SuffixArray' of a given string. Please see [suffix array](https://en.wikipedia.org/wiki/Suffix_array)
--- for more information. 
+-- for more information.
 createSuffixArray :: Ord a
                   => Seq a
                   -> SuffixArray a
@@ -192,12 +189,12 @@ emptySTBWTCounter = newSTRef (-1)
 
 -- | "Magic" Inverse BWT function.
 magicInverseBWT :: Seq (Maybe a,Int)
-                -> ST s (BWTSeq a)
-magicInverseBWT DS.Empty = do
+                -> BWTSeq a
+magicInverseBWT DS.Empty = CMST.runST $ do
   bwtseqstackempty  <- emptySTBWTSeq
   bwtseqstackemptyr <- readSTRef bwtseqstackempty
   return bwtseqstackemptyr
-magicInverseBWT xs       = do
+magicInverseBWT xs       = CMST.runST $ do
   bwtseqstack      <- emptySTBWTSeq
   bwtcounterstackf <- emptySTBWTCounter
   bwtcounterstacke <- emptySTBWTCounter
@@ -220,7 +217,7 @@ magicInverseBWT xs       = do
         iBWT ys bwtss bwtcsf bwtcse = do
           cbwtcsf <- readSTRef bwtcsf
           cbwtcse <- readSTRef bwtcse
-          CM.when (cbwtcsf /= cbwtcse) $ do 
+          CM.when (cbwtcsf /= cbwtcse) $ do
             let next = DS.index ys cbwtcsf
             pushSTBWTSeq bwtss
                          (DMaybe.fromJust $ fst next)

@@ -85,13 +85,20 @@ library
                       containers >= 0.6.0.1 && < 0.7,
                       mtl        >= 2.2.2 && < 2.3,
                       parallel   >= 3.2.2 && < 3.3,
-                      text       >= 1.2.3.1 && < 1.3
+                      text       >= 1.2.3.1 && < 1.3,
+                      HUnit
 
     -- Directories containing source files.
     hs-source-dirs:   src
 
     -- Base language which the package is written in.
-    default-language: Haskell2010 
+    default-language: Haskell2010
 
     -- Set highest (reasonable) optimization level to compile with.
     ghc-options: -O2 -fprof-auto
+
+test-suite tests
+    default-language: Haskell2010
+    type: exitcode-stdio-1.0
+    main-is: Tests.hs
+    build-depends: base, HUnit, text-compression

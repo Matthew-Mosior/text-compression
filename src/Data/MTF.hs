@@ -2,6 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE Strict            #-}
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 
 -- |
@@ -56,27 +58,21 @@ module Data.MTF ( -- * To MTF functions
                   textFromMTFB,
                   bytestringFromMTFB,
                   textFromMTFT,
-                  bytestringFromMTFT
+                  bytestringFromMTFT,
+                  tests
                 ) where
 
-import Data.BWT
-import Data.BWT.Internal 
+import Data.BWT hiding (tests)
+import Data.BWT.Internal
 import Data.MTF.Internal
 
-import Control.Monad()
-import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS
-import Data.ByteString.Char8()
-import Data.Char()
-import Data.Foldable()
-import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..))
-import Data.STRef()
-import Data.Text as DText 
+import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
 import Prelude as P
+import Test.HUnit
 
 
 {-toMTF Function(s)-}
@@ -110,15 +106,9 @@ textToBWTToMTFT = textBWTToMTFT . textToBWT
 textBWTToMTFB :: TextBWT
               -> MTFB
 textBWTToMTFB xs =
-  MTFB (CMST.runST $ seqToMTFB xss)
+  MTFB (seqToMTFB xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
+      xss = fmap (fmap BS.singleton)
             ((\(BWT t) -> t) $
             ((\(TextBWT t) -> t) xs))
 
@@ -127,32 +117,18 @@ textBWTToMTFB xs =
 bytestringBWTToMTFB :: BWT Word8
                     -> MTFB
 bytestringBWTToMTFB xs =
-  MTFB (CMST.runST $ seqToMTFB xss)
+  MTFB (seqToMTFB xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) xs)
+      xss = fmap (fmap BS.singleton) ((\(BWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Move-to-front transform ('MTFB').
 textBWTToMTFT :: TextBWT
               -> MTFT
 textBWTToMTFT xs =
-  MTFT (CMST.runST $ seqToMTFT xss)
+  MTFT (seqToMTFT xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
             ((\(BWT t) -> t) $
             ((\(TextBWT t) -> t) xs))
 
@@ -161,63 +137,42 @@ textBWTToMTFT xs =
 bytestringBWTToMTFT :: BWT Word8
                     -> MTFT
 bytestringBWTToMTFT xs =
-  MTFT (CMST.runST $ seqToMTFT xss)
+  MTFT (seqToMTFT xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
             ((\(BWT t) -> t) xs)
 
 -- | Takes a 'Text' and returns the Move-to-front transform ('MTFB').
 textToMTFB :: Seq (Maybe Text)
            -> MTFB
 textToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
-textToMTFB xs       = 
-  MTFB (CMST.runST $ seqToMTFB xss)
+textToMTFB xs       =
+  MTFB (seqToMTFB xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just            $
-                               DTE.encodeUtf8 $
-                               fromJust x
-                 )
-            xs
+      xss = fmap (fmap DTE.encodeUtf8) xs
 
 -- | Takes a 'Seq' of 'ByteString's and returns the Move-to-front transform ('MTFB').
 bytestringToMTFB :: Seq (Maybe ByteString)
                  -> MTFB
 bytestringToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
 bytestringToMTFB xs       =
- MTFB (CMST.runST $ seqToMTFB xs)
+ MTFB (seqToMTFB xs)
 
 -- | Takes a 'Text' and returns the Move-to-front transform ('MTFT').
 textToMTFT :: Seq (Maybe Text)
            -> MTFT
 textToMTFT DS.Empty = MTFT (DS.Empty,DS.Empty)
 textToMTFT xs       =
-  MTFT (CMST.runST $ seqToMTFT xs)
+  MTFT (seqToMTFT xs)
 
 -- | Takes a 'ByteString' and returns the Move-to-front transform ('MTFT').
 bytestringToMTFT :: Seq (Maybe ByteString)
                  -> MTFT
 bytestringToMTFT DS.Empty = MTFT (DS.Empty,DS.Empty)
 bytestringToMTFT xs       =
-  MTFT (CMST.runST $ seqToMTFT xss)
+  MTFT (seqToMTFT xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              fromJust x
-                 )
-            xs 
+      xss = fmap (fmap DTE.decodeUtf8) xs
 
 {-------------------}
 
@@ -226,7 +181,7 @@ bytestringToMTFT xs       =
 
 -- | Helper function for converting a 'BWT'ed 'MTFB'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromMTFB :: MTFB 
+bytestringFromBWTFromMTFB :: MTFB
                           -> ByteString
 bytestringFromBWTFromMTFB = bytestringFromByteStringBWT . bytestringBWTFromMTFB
 
@@ -236,14 +191,7 @@ bytestringFromBWTFromMTFT :: MTFT
                           -> ByteString
 bytestringFromBWTFromMTFT xs = bytestringFromByteStringBWT $
                                BWT                         $
-                               fmap (\x -> if | isNothing x
-                                              -> Nothing
-                                              | otherwise
-                                              -> Just           $
-                                                 DTE.encodeUtf8 $
-                                                 fromJust x
-                                    )
-                                                           $
+                               fmap (fmap DTE.encodeUtf8)  $
                             ((\(BWT t) -> t) (textBWTFromMTFT xs))
 
 -- | Helper function for converting a 'BWT'ed 'MTFB'
@@ -264,8 +212,8 @@ textBWTFromMTFT :: MTFT
                 -> BWT Text
 textBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
-textBWTFromMTFT xs                  = 
-  BWT (CMST.runST $ seqFromMTFT xs)
+textBWTFromMTFT xs                  =
+  BWT (seqFromMTFT xs)
 
 -- | Takes a 'MTFT' and returns
 -- the 'BWT' of 'ByteString's.
@@ -274,14 +222,8 @@ bytestringBWTFromMTFT :: MTFT
 bytestringBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFT xs                  = do
-  let originalbwtb = CMST.runST $ seqFromMTFT xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.encodeUtf8 $
-                        fromJust x 
-            ) originalbwtb)
+  let originalbwtb = seqFromMTFT xs
+  BWT (fmap (fmap DTE.encodeUtf8) originalbwtb)
 
 -- | Takes a 'MTFB' and returns
 -- the 'BWT' of 'Text's.
@@ -290,23 +232,17 @@ textBWTFromMTFB :: MTFB
 textBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFB xs                  = do
-  let originalbwtt = CMST.runST $ seqFromMTFB xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.decodeUtf8 $
-                        fromJust x
-            ) originalbwtt)
+  let originalbwtt = seqFromMTFB xs
+  BWT (fmap (fmap DTE.decodeUtf8) originalbwtt)
 
 -- | Take a 'MTFB' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromMTFB :: MTFB 
+bytestringBWTFromMTFB :: MTFB
                       -> BWT ByteString
 bytestringBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFB xs              =
-  BWT (CMST.runST $ seqFromMTFB xs)
+  BWT (seqFromMTFB xs)
 
 -- | Takes a 'MTFB' and returns
 -- the original 'Seq' of 'Text's.
@@ -315,14 +251,8 @@ textFromMTFB :: MTFB
 textFromMTFB (MTFB (DS.Empty,_)) = DS.Empty
 textFromMTFB (MTFB (_,DS.Empty)) = DS.Empty
 textFromMTFB xs                  = do
-  let originalt = CMST.runST $ seqFromMTFB xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $
-                    DTE.decodeUtf8 $
-                    fromJust x
-       ) originalt
+  let originalt = seqFromMTFB xs
+  fmap (fmap DTE.decodeUtf8) originalt
 
 -- | Takes a 'MTFB' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -331,7 +261,7 @@ bytestringFromMTFB :: MTFB
 bytestringFromMTFB (MTFB (DS.Empty,_)) = DS.Empty
 bytestringFromMTFB (MTFB (_,DS.Empty)) = DS.Empty
 bytestringFromMTFB xs                  =
-  CMST.runST $ seqFromMTFB xs
+  seqFromMTFB xs
 
 -- | Takes a 'MTFT' and returns
 -- the original 'Seq' of 'Text's.
@@ -340,7 +270,7 @@ textFromMTFT :: MTFT
 textFromMTFT (MTFT (DS.Empty,_)) = DS.Empty
 textFromMTFT (MTFT (_,DS.Empty)) = DS.Empty
 textFromMTFT xs                  =
-  CMST.runST $ seqFromMTFT xs
+  seqFromMTFT xs
 
 -- | Takes a 'MTFT' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -349,13 +279,10 @@ bytestringFromMTFT :: MTFT
 bytestringFromMTFT (MTFT (DS.Empty,_)) = DS.Empty
 bytestringFromMTFT (MTFT (_,DS.Empty)) = DS.Empty
 bytestringFromMTFT xs                  = do
-  let originalb = CMST.runST $ seqFromMTFT xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $ 
-                    DTE.encodeUtf8 $
-                    fromJust x
-       ) originalb
+  let originalb = seqFromMTFT xs
+  fmap (fmap DTE.encodeUtf8) originalb
 
 {---------------------}
+
+tests :: Test
+tests = TestList []

@@ -140,7 +140,7 @@ module Data.FMIndex.Internal ( -- * Base FM-index types
                                STOccCKCounterB,
                                updateSTOccCKCounterB,
                                emptySTOccCKCounterB,
-                               seqToOccCKB,              
+                               seqToOccCKB,
                                -- * To OccCK (Text) functions
                                PTOccCKSeqT,
                                OccCKSeqT,
@@ -167,7 +167,7 @@ module Data.FMIndex.Internal ( -- * Base FM-index types
                                STCcCounterB,
                                updateSTCcCounterB,
                                emptySTCcCounterB,
-                               seqToCcB,                                                              
+                               seqToCcB,
                                -- * Cc (Text) functions
                                PTCcSeqT,
                                CcSeqT,
@@ -258,13 +258,7 @@ import Data.MTF.Internal
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS hiding (count)
-import Data.ByteString.Char8()
-import Data.ByteString.Internal()
-import Data.Foldable()
-import Data.List()
-import Data.Maybe()
 import Data.Sequence as DS (Seq(..),ViewL(..),ViewR(..),empty,findIndexL,fromList,index,length,(|>))
 import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
@@ -378,17 +372,17 @@ updateSTOccCKCounterB s e = writeSTRef s e
 
 -- | State function to create empty 'STOccCKCounterB' type.
 emptySTOccCKCounterB :: ST s (STOccCKCounterB s Int)
-emptySTOccCKCounterB = newSTRef 0 
+emptySTOccCKCounterB = newSTRef 0
 
 -- | Strict state monad function.
 seqToOccCKB :: PBOccCKSeqB
-            -> ST s OccCKSeqB
-seqToOccCKB DS.Empty      = do
+            -> OccCKSeqB
+seqToOccCKB DS.Empty      = CMST.runST $ do
   boccckseqstackempty  <- emptySTOccCKSeqB
   boccckseqstackemptyr <- readSTRef boccckseqstackempty
   return boccckseqstackemptyr
-seqToOccCKB xs            = do
-  boccckseqstack     <- emptySTOccCKSeqB 
+seqToOccCKB xs            = CMST.runST $ do
+  boccckseqstack     <- emptySTOccCKSeqB
   boccckinitiallist  <- emptySTOccCKILB
   boccckcounterstack <- emptySTOccCKCounterB
   let il = nubSeq' xs
@@ -413,7 +407,7 @@ seqToOccCKB xs            = do
                  zs
                  boccckss
                  boccckis
-                 boccckcs                           
+                 boccckcs
         iOccCKB ys
                 zs
                 boccckss
@@ -436,7 +430,7 @@ seqToOccCKB xs            = do
                           bs
                           boccckss
                           boccckis
-                          boccckcs    
+                          boccckcs
            | otherwise
            -> do updateSTOccCKSeqAB boccckss
                                     (cboccckis,cboccckcs,b)
@@ -515,12 +509,12 @@ emptySTOccCKCounterT = newSTRef 0
 
 -- | Strict state monad function.
 seqToOccCKT :: PTOccCKSeqT
-            -> ST s OccCKSeqT
-seqToOccCKT DS.Empty      = do
+            -> OccCKSeqT
+seqToOccCKT DS.Empty      = CMST.runST $ do
   toccckseqstackempty  <- emptySTOccCKSeqT
   toccckseqstackemptyr <- readSTRef toccckseqstackempty
   return toccckseqstackemptyr
-seqToOccCKT xs            = do
+seqToOccCKT xs            = CMST.runST $ do
   toccckseqstack     <- emptySTOccCKSeqT
   toccckinitiallist  <- emptySTOccCKILT
   toccckcounterstack <- emptySTOccCKCounterT
@@ -637,12 +631,12 @@ emptySTCcCounterB = newSTRef 0
 
 -- | Strict state monad function.
 seqToCcB :: PBCcSeqB
-         -> ST s CcSeqB
-seqToCcB DS.Empty      = do
+         -> CcSeqB
+seqToCcB DS.Empty      = CMST.runST $ do
   bccseqstackempty  <- emptySTCcSeqB
   bccseqstackemptyr <- readSTRef bccseqstackempty
   return bccseqstackemptyr
-seqToCcB xs            = do
+seqToCcB xs            = CMST.runST $ do
   bccseqstack     <- emptySTCcSeqB
   bccinitiallist  <- emptySTCcILB
   bcccounterstack <- emptySTCcCounterB
@@ -674,13 +668,13 @@ seqToCcB xs            = do
         cbcccs <- readSTRef bcccs
         if | as == b
            -> updateSTCcSeqB bccss
-                             (cbcccs,as) 
+                             (cbcccs,as)
            | otherwise
            -> do updateSTCcCounterB bcccs
                                     (cbcccs + 1)
                  iiCcB as
                        bs
-                       bccss 
+                       bccss
                        bcccs
 
 {-------------------------------}
@@ -739,12 +733,12 @@ emptySTCcCounterT = newSTRef 0
 
 -- | Strict state monad function.
 seqToCcT :: PTCcSeqT
-         -> ST s CcSeqT
-seqToCcT DS.Empty      = do
+         -> CcSeqT
+seqToCcT DS.Empty      = CMST.runST $ do
   tccseqstackempty  <- emptySTCcSeqT
   tccseqstackemptyr <- readSTRef tccseqstackempty
   return tccseqstackemptyr
-seqToCcT xs            = do
+seqToCcT xs            = CMST.runST $ do
   tccseqstack     <- emptySTCcSeqT
   tccinitiallist  <- emptySTCcILT
   tcccounterstack <- emptySTCcCounterT
@@ -793,7 +787,7 @@ seqToCcT xs            = do
 -- | Abstract 'FFMIndexSeqB' type utilizing a 'Seq'.
 type FFMIndexSeqB = Seq (Maybe ByteString)
 
--- | Simple Inverse FMIndex function. 
+-- | Simple Inverse FMIndex function.
 seqFromFMIndexB :: FMIndexB
                 -> FFMIndexSeqB
 seqFromFMIndexB (FMIndexB (CcB DS.Empty,_,_))    = DS.Empty
@@ -902,12 +896,12 @@ emptySTCCurrentEndB = newSTRef (-1)
 -- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
 countFMIndexB :: PBCPat
               -> FMIndexB
-              -> ST s CIntB 
-countFMIndexB DS.Empty _                                = return Nothing
-countFMIndexB _        (FMIndexB (CcB DS.Empty,_,_))    = return Nothing
-countFMIndexB _        (FMIndexB (_,OccCKB DS.Empty,_)) = return Nothing
-countFMIndexB _        (FMIndexB (_,_,SAB DS.Empty))    = return Nothing
-countFMIndexB xs       ys                               = do
+              -> CIntB
+countFMIndexB DS.Empty _                                = CMST.runST $ return Nothing
+countFMIndexB _        (FMIndexB (CcB DS.Empty,_,_))    = CMST.runST $ return Nothing
+countFMIndexB _        (FMIndexB (_,OccCKB DS.Empty,_)) = CMST.runST $ return Nothing
+countFMIndexB _        (FMIndexB (_,_,SAB DS.Empty))    = CMST.runST $ return Nothing
+countFMIndexB xs       ys                               = CMST.runST $ do
   bccounter      <- emptySTCCounterB
   bcbool         <- emptySTCBoolB
   bccurrentstart <- emptySTCCurrentStartB
@@ -924,7 +918,7 @@ countFMIndexB xs       ys                               = do
   let count = if | (cbccurrentstart == (-1) && cbccurrentend == (-1)) ||
                    ((cbccurrentend - cbccurrentstart) + 1) == 0       ||
                    cbcbool
-                 -> Nothing 
+                 -> Nothing
                  | otherwise
                  -> Just ((cbccurrentend - cbccurrentstart) + 1)
   return count
@@ -947,13 +941,13 @@ countFMIndexB xs       ys                               = do
            | otherwise
            -> if | cbcc == 0
                  -> do case DS.findIndexL (\(_,d) -> d == Just a) ccbbs of
-                         Nothing     -> pure () 
+                         Nothing     -> pure ()
                          Just bindex -> do if | bindex == (DS.length ccbbs) - 1
                                               -> do let istart = (fst $ DS.index ccbbs bindex) + 1
                                                     let iend   = case viewl coccckbs of
                                                                    EmptyL      -> (-1)
                                                                    (x DS.:< _) -> DS.length $
-                                                                                  snd x 
+                                                                                  snd x
                                                     updateSTCCurrentStartB bccs
                                                                            istart
                                                     updateSTCCurrentEndB bcce
@@ -965,10 +959,10 @@ countFMIndexB xs       ys                               = do
                                                         bcc
                                                         bcb
                                                         bccs
-                                                        bcce 
+                                                        bcce
                                               | otherwise
                                               -> do let istart = (fst $ DS.index ccbbs bindex) + 1
-                                                    let iend   = fst $ DS.index ccbbs (bindex + 1) 
+                                                    let iend   = fst $ DS.index ccbbs (bindex + 1)
                                                     updateSTCCurrentStartB bccs
                                                                            istart
                                                     updateSTCCurrentEndB bcce
@@ -1073,12 +1067,12 @@ emptySTCCurrentEndT = newSTRef (-1)
 -- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
 countFMIndexT :: PTCPat
               -> FMIndexT
-              -> ST s CIntT
-countFMIndexT DS.Empty _                                = return Nothing
-countFMIndexT _        (FMIndexT (CcT DS.Empty,_,_))    = return Nothing
-countFMIndexT _        (FMIndexT (_,OccCKT DS.Empty,_)) = return Nothing
-countFMIndexT _        (FMIndexT (_,_,SAT DS.Empty))    = return Nothing
-countFMIndexT xs       ys                               = do
+              -> CIntT
+countFMIndexT DS.Empty _                                = CMST.runST $ return Nothing
+countFMIndexT _        (FMIndexT (CcT DS.Empty,_,_))    = CMST.runST $ return Nothing
+countFMIndexT _        (FMIndexT (_,OccCKT DS.Empty,_)) = CMST.runST $ return Nothing
+countFMIndexT _        (FMIndexT (_,_,SAT DS.Empty))    = CMST.runST $ return Nothing
+countFMIndexT xs       ys                               = CMST.runST $ do
   tccounter      <- emptySTCCounterT
   tcbool         <- emptySTCBoolT
   tccurrentstart <- emptySTCCurrentStartT
@@ -1244,12 +1238,12 @@ emptySTLCurrentEndB = newSTRef (-1)
 -- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
 locateFMIndexB :: PBLPat
                -> FMIndexB
-               -> ST s LIntB
-locateFMIndexB DS.Empty _                                = return DS.Empty
-locateFMIndexB _        (FMIndexB (CcB DS.Empty,_,_))    = return DS.Empty
-locateFMIndexB _        (FMIndexB (_,OccCKB DS.Empty,_)) = return DS.Empty
-locateFMIndexB _        (FMIndexB (_,_,SAB DS.Empty))    = return DS.Empty 
-locateFMIndexB xs       ys                               = do
+               -> LIntB
+locateFMIndexB DS.Empty _                                = CMST.runST $ return DS.Empty
+locateFMIndexB _        (FMIndexB (CcB DS.Empty,_,_))    = CMST.runST $ return DS.Empty
+locateFMIndexB _        (FMIndexB (_,OccCKB DS.Empty,_)) = CMST.runST $ return DS.Empty
+locateFMIndexB _        (FMIndexB (_,_,SAB DS.Empty))    = CMST.runST $ return DS.Empty
+locateFMIndexB xs       ys                               = CMST.runST $ do
   blcounter      <- emptySTLCounterB
   blbool         <- emptySTLBoolB
   blcurrentstart <- emptySTLCurrentStartB
@@ -1417,12 +1411,12 @@ emptySTLCurrentEndT = newSTRef (-1)
 -- in the original text T [credit](https://en.wikipedia.org/wiki/FM-index).
 locateFMIndexT :: PTLPat
                -> FMIndexT
-               -> ST s LIntT
-locateFMIndexT DS.Empty _                                = return DS.Empty
-locateFMIndexT _        (FMIndexT (CcT DS.Empty,_,_))    = return DS.Empty
-locateFMIndexT _        (FMIndexT (_,OccCKT DS.Empty,_)) = return DS.Empty
-locateFMIndexT _        (FMIndexT (_,_,SAT DS.Empty))    = return DS.Empty
-locateFMIndexT xs       ys                               = do
+               -> LIntT
+locateFMIndexT DS.Empty _                                = CMST.runST $ return DS.Empty
+locateFMIndexT _        (FMIndexT (CcT DS.Empty,_,_))    = CMST.runST $ return DS.Empty
+locateFMIndexT _        (FMIndexT (_,OccCKT DS.Empty,_)) = CMST.runST $ return DS.Empty
+locateFMIndexT _        (FMIndexT (_,_,SAT DS.Empty))    = CMST.runST $ return DS.Empty
+locateFMIndexT xs       ys                               = CMST.runST $ do
   tlcounter      <- emptySTLCounterT
   tlbool         <- emptySTLBoolT
   tlcurrentstart <- emptySTLCurrentStartT

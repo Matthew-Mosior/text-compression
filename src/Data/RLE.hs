@@ -2,7 +2,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ViewPatterns      #-}
 {-# LANGUAGE Strict            #-}
-
+{-# LANGUAGE OverloadedLists   #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 -- |
 -- Module      :  Data.RLE
@@ -56,27 +57,22 @@ module Data.RLE ( -- * To RLE functions
                   textFromRLEB,
                   bytestringFromRLEB,
                   textFromRLET,
-                  bytestringFromRLET                   
+                  bytestringFromRLET,
+                  tests
                 ) where
 
-import Data.BWT
-import Data.BWT.Internal 
+import Data.BWT hiding (tests)
+import Data.BWT.Internal
 import Data.RLE.Internal
 
-import Control.Monad()
-import Control.Monad.ST as CMST
-import Control.Monad.State.Strict()
 import Data.ByteString as BS
-import Data.ByteString.Char8()
-import Data.Char()
-import Data.Foldable()
-import Data.Maybe as DMaybe (isNothing,fromJust)
 import Data.Sequence as DS (Seq(..))
-import Data.STRef()
-import Data.Text as DText 
+import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
+import GHC.Exts (fromList)
 import Prelude as P
+import Test.HUnit
 
 
 {-toRLE Function(s)-}
@@ -84,142 +80,98 @@ import Prelude as P
 -- | Helper function for converting a 'ByteString'
 -- to a 'RLEB' via a 'BWT' first.
 bytestringToBWTToRLEB :: ByteString
-                      -> RLEB
+                      -> RLE ByteString
 bytestringToBWTToRLEB = bytestringBWTToRLEB . bytestringToBWT
 
 -- | Helper function for converting a 'ByteString'
 -- to a 'RLET' via a 'BWT' first.
 bytestringToBWTToRLET :: ByteString
-                      -> RLET
+                      -> RLE Text
 bytestringToBWTToRLET = bytestringBWTToRLET . bytestringToBWT
 
 -- | Helper function for converting a 'Text'
 -- to a 'RLEB' via a 'BWT' first.
 textToBWTToRLEB :: Text
-                -> RLEB
+                -> RLE ByteString
 textToBWTToRLEB = textBWTToRLEB . textToBWT
 
 -- | Helper function for converting a 'Text'
 -- to a 'RLET' via a 'BWT' first.
 textToBWTToRLET :: Text
-                -> RLET
+                -> RLE Text
 textToBWTToRLET = textBWTToRLET . textToBWT
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
 textBWTToRLEB :: TextBWT
-              -> RLEB
+              -> RLE ByteString
 textBWTToRLEB xs =
-  RLEB (CMST.runST $ seqToRLEB xss)
+  RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) $
-            ((\(TextBWT t) -> t) xs))
+      xss = fmap (fmap BS.singleton)
+              ((\(BWT t) -> t) $ ((\(TextBWT t) -> t) xs))
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
 bytestringBWTToRLEB :: BWT Word8
-                    -> RLEB
-bytestringBWTToRLEB (BWT DS.Empty) = RLEB DS.Empty
+                    -> RLE ByteString
+bytestringBWTToRLEB (BWT DS.Empty) = RLE DS.Empty
 bytestringBWTToRLEB xs             =
-  RLEB (CMST.runST $ seqToRLEB xss)
+  RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just         $
-                              BS.singleton $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) xs)
+      xss = fmap (fmap BS.singleton) ((\(BWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLEB').
 textBWTToRLET :: TextBWT
-              -> RLET
+              -> RLE Text
 textBWTToRLET xs =
-  RLET (CMST.runST $ seqToRLET xss)
+  RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) $
-            ((\(TextBWT t) -> t) xs))
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
+             ((\(BWT t) -> t) $ ((\(TextBWT t) -> t) xs))
 
 -- | Take a 'BWT' of 'Word8's and generate the
 -- Run-length encoding ('RLET').
 bytestringBWTToRLET :: BWT Word8
-                    -> RLET
-bytestringBWTToRLET (BWT DS.Empty) = RLET DS.Empty
+                    -> RLE Text
+bytestringBWTToRLET (BWT DS.Empty) = RLE DS.Empty
 bytestringBWTToRLET xs             =
-  RLET (CMST.runST $ seqToRLET xss)
+  RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              BS.singleton   $
-                              fromJust x
-                 )
-            ((\(BWT t) -> t) xs)
+      xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton)) ((\(BWT t) -> t) xs)
 
 -- | Takes a 'Text' and returns the Run-length encoding ('RLEB').
 textToRLEB :: Seq (Maybe Text)
-           -> RLEB
-textToRLEB DS.Empty = RLEB DS.Empty
-textToRLEB xs       = 
-  RLEB (CMST.runST $ seqToRLEB xss)
+           -> RLE ByteString
+textToRLEB DS.Empty = RLE DS.Empty
+textToRLEB xs       =
+  RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just            $
-                               DTE.encodeUtf8 $
-                               fromJust x
-                 )
-            xs
+      xss = fmap (fmap DTE.encodeUtf8) xs
 
 -- | Takes a 'Seq' of 'ByteString's and returns the Run-length encoding ('RLEB').
 bytestringToRLEB :: Seq (Maybe ByteString)
-                 -> RLEB
-bytestringToRLEB DS.Empty = RLEB DS.Empty
+                 -> RLE ByteString
+bytestringToRLEB DS.Empty = RLE DS.Empty
 bytestringToRLEB xs       =
- RLEB (CMST.runST $ seqToRLEB xs)
+ RLE (seqToRLE xs)
 
 -- | Takes a 'Text' and returns the Run-length encoding (RLE).
 textToRLET :: Seq (Maybe Text)
-           -> RLET
-textToRLET DS.Empty = RLET DS.Empty
+           -> RLE Text
+textToRLET DS.Empty = RLE DS.Empty
 textToRLET xs       =
-  RLET (CMST.runST $ seqToRLET xs)
+  RLE (seqToRLE xs)
 
 -- | Takes a 'ByteString' and returns the Run-length encoding (RLE).
 bytestringToRLET :: Seq (Maybe ByteString)
-                 -> RLET
-bytestringToRLET DS.Empty = RLET DS.Empty
+                 -> RLE Text
+bytestringToRLET DS.Empty = RLE DS.Empty
 bytestringToRLET xs       =
-  RLET (CMST.runST $ seqToRLET xss)
+  RLE (seqToRLE xss)
     where
-      xss = fmap (\x -> if | isNothing x
-                           -> Nothing
-                           | otherwise
-                           -> Just           $
-                              DTE.decodeUtf8 $
-                              fromJust x
-                 )
-            xs 
+      xss = fmap (fmap DTE.decodeUtf8) xs
 
 {-------------------}
 
@@ -228,128 +180,130 @@ bytestringToRLET xs       =
 
 -- | Helper function for converting a 'BWT'ed 'RLEB'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromRLEB :: RLEB 
+bytestringFromBWTFromRLEB :: RLE ByteString
                           -> ByteString
 bytestringFromBWTFromRLEB = bytestringFromByteStringBWT . bytestringBWTFromRLEB
 
 -- | Helper function for converting a 'BWT'ed 'RLET'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromRLET :: RLET
+bytestringFromBWTFromRLET :: RLE Text
                           -> ByteString
 bytestringFromBWTFromRLET xs = bytestringFromByteStringBWT $
                                BWT                         $
-                               fmap (\x -> if | isNothing x
-                                              -> Nothing
-                                              | otherwise
-                                              -> Just           $
-                                                 DTE.encodeUtf8 $
-                                                 fromJust x
-                                    )
-                                                           $
+                               fmap (fmap DTE.encodeUtf8)  $
                             ((\(BWT t) -> t) (textBWTFromRLET xs))
 
 -- | Helper function for converting a 'BWT'ed 'RLEB'
 -- back to the original 'Text'.
-textFromBWTFromRLEB :: RLEB
+textFromBWTFromRLEB :: RLE ByteString
                     -> Text
-textFromBWTFromRLEB = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromRLEB 
+textFromBWTFromRLEB = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromRLEB
 
 -- | Helper function for converting a 'BWT'ed 'RLET'
 -- back to the original 'Text'.
-textFromBWTFromRLET :: RLET
+textFromBWTFromRLET :: RLE Text
                     -> Text
 textFromBWTFromRLET = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromRLET
 
 -- | Takes a 'RLET' and returns
 -- the 'BWT' of 'Text's.
-textBWTFromRLET :: RLET
+textBWTFromRLET :: RLE Text
                 -> BWT Text
-textBWTFromRLET (RLET DS.Empty) = BWT DS.Empty
-textBWTFromRLET xs              = 
-  BWT (CMST.runST $ seqFromRLET xs)
+textBWTFromRLET (RLE DS.Empty) = BWT DS.Empty
+textBWTFromRLET xs              =
+  BWT (seqFromRLE xs)
 
--- | Takes a 'RLET' and returns
+-- | Takes a 'RLE' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromRLET :: RLET
+bytestringBWTFromRLET :: RLE Text
                       -> BWT ByteString
-bytestringBWTFromRLET (RLET DS.Empty) = BWT DS.Empty
+bytestringBWTFromRLET (RLE DS.Empty) = BWT DS.Empty
 bytestringBWTFromRLET xs              = do
-  let originalbwtb = CMST.runST $ seqFromRLET xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.encodeUtf8 $
-                        fromJust x 
-            ) originalbwtb)
+  let originalbwtb = seqFromRLE xs
+  BWT (fmap (fmap DTE.encodeUtf8) originalbwtb)
 
 -- | Takes a 'RLEB' and returns
 -- the 'BWT' of 'Text's.
-textBWTFromRLEB :: RLEB
+textBWTFromRLEB :: RLE ByteString
                 -> BWT Text
-textBWTFromRLEB (RLEB DS.Empty) = BWT DS.Empty
+textBWTFromRLEB (RLE DS.Empty) = BWT DS.Empty
 textBWTFromRLEB xs              = do
-  let originalbwtt = CMST.runST $ seqFromRLEB xs
-  BWT (fmap (\x -> if | isNothing x
-                      -> Nothing
-                      | otherwise
-                      -> Just           $
-                         DTE.decodeUtf8 $
-                        fromJust x
-            ) originalbwtt)
+  let originalbwtt = seqFromRLE xs
+  BWT (fmap (fmap DTE.decodeUtf8) originalbwtt)
 
--- | Take a 'RLEB' and returns
+-- | Take a 'RLE' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromRLEB :: RLEB 
+bytestringBWTFromRLEB :: RLE ByteString
                       -> BWT ByteString
-bytestringBWTFromRLEB (RLEB DS.Empty) = BWT DS.Empty
+bytestringBWTFromRLEB (RLE DS.Empty) = BWT DS.Empty
 bytestringBWTFromRLEB xs              =
-  BWT (CMST.runST $ seqFromRLEB xs)
+  BWT (seqFromRLE xs)
 
--- | Takes a 'RLEB' and returns
+-- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'Text's.
-textFromRLEB :: RLEB
+textFromRLEB :: RLE ByteString
              -> Seq (Maybe Text)
-textFromRLEB (RLEB DS.Empty) = DS.Empty
+textFromRLEB (RLE DS.Empty) = DS.Empty
 textFromRLEB xs              = do
-  let originalt = CMST.runST $ seqFromRLEB xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $
-                    DTE.decodeUtf8 $
-                    fromJust x
-       ) originalt
+  let originalt = seqFromRLE xs
+  fmap (fmap DTE.decodeUtf8) originalt
 
--- | Takes a 'RLEB' and returns
+-- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'ByteString's.
-bytestringFromRLEB :: RLEB
+bytestringFromRLEB :: RLE ByteString
                    -> Seq (Maybe ByteString)
-bytestringFromRLEB (RLEB DS.Empty) = DS.Empty
+bytestringFromRLEB (RLE DS.Empty) = DS.Empty
 bytestringFromRLEB xs              =
-  CMST.runST $ seqFromRLEB xs
+  seqFromRLE xs
 
--- | Takes a 'RLET' and returns
+-- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'Text's.
-textFromRLET :: RLET
+textFromRLET :: RLE Text
              -> Seq (Maybe Text)
-textFromRLET (RLET DS.Empty) = DS.Empty
+textFromRLET (RLE DS.Empty) = DS.Empty
 textFromRLET xs              =
-  CMST.runST $ seqFromRLET xs
+  seqFromRLE xs
 
--- | Takes a 'RLET' and returns
+-- | Takes a 'RLE' and returns
 -- the original 'Seq' of 'ByteString's.
-bytestringFromRLET :: RLET
+bytestringFromRLET :: RLE Text
                    -> Seq (Maybe ByteString)
-bytestringFromRLET (RLET DS.Empty) = DS.Empty
+bytestringFromRLET (RLE DS.Empty) = DS.Empty
 bytestringFromRLET xs              = do
-  let originalb = CMST.runST $ seqFromRLET xs
-  fmap (\x -> if | isNothing x
-                 -> Nothing
-                 | otherwise
-                 -> Just           $ 
-                    DTE.encodeUtf8 $
-                    fromJust x
-       ) originalb
+  let originalb = seqFromRLE xs
+  fmap (fmap DTE.encodeUtf8) originalb
 
 {---------------------}
+
+tests :: Test
+tests =
+  TestList
+  [ TestCase (assertEqual "test 1"
+                (RLE (fromList [Just "1",Just "c",
+                                Just "1",Nothing,
+                                Just "4",Just "a",
+                                Just "3",Just "b",
+                                Just "3",Just "c",
+                                Just "1",Just "b"]))
+                (textToBWTToRLET "aaaabbbbcccc"))
+  , TestCase
+      (assertEqual "test 2"
+        (RLE (fromList [Just "1", Just "U", Just "1", Just "r", Just "1", Just "t", Just "102",Just "z", Just "2", Just "4",
+                         Just "2", Just "2", Just "42",Just "z", Just "2", Just "1", Just "5",  Just "z", Just "2", Just "1",
+                         Just "8", Just "z", Just "2", Just "a", Just "2", Just "U", Just "7",  Just "z", Just "2", Just "f",
+                         Just "2", Just "z", Just "2", Just "a", Just "2", Just "e", Just "2",  Just "z", Just "1", Just "4",
+                         Just "2", Just "f", Just "3", Just "3", Just "1", Just "1", Just "1",  Just "4", Just "15",Just "0",
+                         Just "2", Just "1", Just "3", Just "0", Just "2", Just "1", Just "1",  Just "0", Just "1", Just "1",
+                         Just "36",Just "0", Just "2", Just "c", Just "8", Just "0", Just "1",  Just "1", Just "1", Just "5",
+                         Just "1", Just "2", Just "1", Just "1", Just "1", Just "4", Just "41", Just "0", Just "2", Just "2",
+                         Just "2", Just "a", Just "2", Just "0", Just "2", Just "f", Just "2",  Just "5", Just "1", Just "2",
+                         Just "9", Just "0", Just "2", Just "d", Just "6", Just "0", Just "3",  Just "2", Just "2", Just "1",
+                         Just "1", Just "4", Just "1", Just "2", Just "1", Just "0", Just "2",  Just "9", Just "2", Just "3",
+                         Just "2", Just "8", Just "6", Just "0", Just "2", Just "9", Just "2",  Just "0", Just "2", Just "1",
+                         Just "2", Just "7", Just "1", Just "e", Just "2", Just "0", Just "1",  Nothing,  Just "2", Just "0",
+                         Just "2", Just "b", Just "2", Just "f", Just "2", Just "0", Just "2",  Just "z", Just "1", Just "d",
+                         Just "1", Just "-", Just "1", Just "u", Just "2", Just "z", Just "1",  Just "t", Just "1", Just "m",
+                         Just "1", Just "o", Just "1", Just "n", Just "1", Just "i", Just "1",  Just "o", Just "30",Just "U",
+                         Just "1", Just "-", Just "95",Just "U", Just "2", Just "n", Just "2",  Just "3", Just "31",Just "U",
+                         Just "2", Just "h", Just "9", Just "U"]))
+        (textToBWTToRLEB "editor-mount-z0Uz0Uz0Uz0Uz0Uz0Uz0Uz5Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz2Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1cUz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uznz0e9Uz7dUz20Uz0ffUz11Uz40Uz0a3Uz9aUz0bfU3z0f5Uz12Uz0a8Uzhz4Uz0Uz0Uz0Uz2Uz4Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz2Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1cUz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uznz0e9Uz7dUz20Uz0ffUz11Uz40Uz0a3Uz9aUz0bfU3z0f5Uz12Uz0a8Uzhz4Uz4U"))]
