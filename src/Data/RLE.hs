@@ -67,6 +67,7 @@ import Data.RLE.Internal
 
 import Data.ByteString as BS
 import Data.Sequence as DS (Seq(..))
+import Data.String (IsString)
 import Data.Text as DText
 import Data.Text.Encoding as DTE (decodeUtf8,encodeUtf8)
 import Data.Word (Word8)
@@ -275,20 +276,19 @@ bytestringFromRLET xs              = do
 
 {---------------------}
 
-tests :: Test
-tests =
-  TestList
-  [ TestCase (assertEqual "test 1"
-                (RLE (fromList [Just "1",Just "c",
-                                Just "1",Nothing,
-                                Just "4",Just "a",
-                                Just "3",Just "b",
-                                Just "3",Just "c",
-                                Just "1",Just "b"]))
-                (textToBWTToRLET "aaaabbbbcccc"))
-  , TestCase
-      (assertEqual "test 2"
-        (RLE (fromList [Just "1", Just "U", Just "1", Just "r", Just "1", Just "t", Just "102",Just "z", Just "2", Just "4",
+rle1 :: (Pack b, IsString b) => RLE b
+rle1 = RLE (fromList [Just "1",Just "c",
+                      Just "1",Nothing,
+                      Just "4",Just "a",
+                      Just "3",Just "b",
+                      Just "3",Just "c",
+                      Just "1",Just "b"])
+
+s1 :: IsString s => s
+s1 = "aaaabbbbcccc"
+
+rle2 :: (Pack b, IsString b) => RLE b
+rle2 = RLE (fromList [Just "1", Just "U", Just "1", Just "r", Just "1", Just "t", Just "102",Just "z", Just "2", Just "4",
                          Just "2", Just "2", Just "42",Just "z", Just "2", Just "1", Just "5",  Just "z", Just "2", Just "1",
                          Just "8", Just "z", Just "2", Just "a", Just "2", Just "U", Just "7",  Just "z", Just "2", Just "f",
                          Just "2", Just "z", Just "2", Just "a", Just "2", Just "e", Just "2",  Just "z", Just "1", Just "4",
@@ -305,5 +305,16 @@ tests =
                          Just "1", Just "-", Just "1", Just "u", Just "2", Just "z", Just "1",  Just "t", Just "1", Just "m",
                          Just "1", Just "o", Just "1", Just "n", Just "1", Just "i", Just "1",  Just "o", Just "30",Just "U",
                          Just "1", Just "-", Just "95",Just "U", Just "2", Just "n", Just "2",  Just "3", Just "31",Just "U",
-                         Just "2", Just "h", Just "9", Just "U"]))
-        (textToBWTToRLEB "editor-mount-z0Uz0Uz0Uz0Uz0Uz0Uz0Uz5Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz2Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1cUz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uznz0e9Uz7dUz20Uz0ffUz11Uz40Uz0a3Uz9aUz0bfU3z0f5Uz12Uz0a8Uzhz4Uz0Uz0Uz0Uz2Uz4Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz2Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1cUz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uznz0e9Uz7dUz20Uz0ffUz11Uz40Uz0a3Uz9aUz0bfU3z0f5Uz12Uz0a8Uzhz4Uz4U"))]
+                         Just "2", Just "h", Just "9", Just "U"])
+
+s2 :: IsString s => s
+s2 = "editor-mount-z0Uz0Uz0Uz0Uz0Uz0Uz0Uz5Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz2Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1cUz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uznz0e9Uz7dUz20Uz0ffUz11Uz40Uz0a3Uz9aUz0bfU3z0f5Uz12Uz0a8Uzhz4Uz0Uz0Uz0Uz2Uz4Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz2Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz2Uz3Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz1cUz0Uz0Uz0Uz1Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uz0Uznz0e9Uz7dUz20Uz0ffUz11Uz40Uz0a3Uz9aUz0bfU3z0f5Uz12Uz0a8Uzhz4Uz4U"
+
+tests :: Test
+tests =
+  TestList
+  [ TestCase (assertEqual "test 1" rle1 (textToBWTToRLET s1))
+  , TestCase (assertEqual "test 2" rle2 (textToBWTToRLEB s2))
+  , TestCase (assertEqual "test 3" s1 (textFromBWTFromRLET rle1))
+  , TestCase (assertEqual "test 4" s2 (textFromBWTFromRLET rle2))
+  ]
