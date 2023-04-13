@@ -3,6 +3,8 @@
 {-# LANGUAGE Strict           #-}
 {-# LANGUAGE DeriveGeneric    #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies     #-}
 
 
 -- |
@@ -31,7 +33,7 @@
 -- = Description
 --
 -- Various data structures and custom data types to describe the Move-to-front transform (MTF)
--- and the Inverse MTF implementations, namely 'seqToMTFB', 'seqToMTFT', 'seqFromMTFB', and 'seqFromMTFT'.
+-- and the Inverse MTF implementations, namely 'seqToMTF', 'seqFromMTFB', and 'seqFromMTFT'.
 --
 -- The MTF implementations rely heavily upon 'Seq' provided by the [containers](https://hackage.haskell.org/package/containers),
 -- 'STRef' and associated functions in the [stref](https://hackage.haskell.org/package/base-4.17.0.0/docs/Data-STRef.html) library,
@@ -39,57 +41,14 @@
 
 
 module Data.MTF.Internal ( -- * Base MTF types
-                           MTFB(..),
-                           MTFT(..),
+                           MTF(..),
                            -- * Auxiliary functions
                            nubSeq',
-                           -- * To MTF (ByteString) functions
-                           PBMTFSeqB,
-                           MTFLSSeqB,
-                           STMTFLSSeqB,
-                           initializeSTMTFLSSeqB,
-                           updateSTMTFLSSeqB,
-                           emptySTMTFLSSeqB,
-                           STMTFILB,
-                           loadSTMTFILB,
-                           emptySTMTFILB,
-                           STMTFCounterB,
-                           updateSTMTFCounterB,
-                           emptySTMTFCounterB,
-                           seqToMTFB,
-                           -- * To MTF (Text) functions
-                           PTMTFSeqT,
-                           MTFLSSeqT,
-                           STMTFLSSeqT,
-                           initializeSTMTFLSSeqT,
-                           updateSTMTFLSSeqT,
-                           emptySTMTFLSSeqT,
-                           STMTFILT,
-                           loadSTMTFILT,
-                           emptySTMTFILT,
-                           STMTFCounterT,
-                           updateSTMTFCounterT,
-                           emptySTMTFCounterT,
-                           seqToMTFT,
+                           -- * To MTF functions
+                           seqToMTF,
                            -- * From MTF (ByteString) functions
-                           FMTFSeqB,
-                           FSTMTFSeqB,
-                           updateFSTMTFSeqB,
-                           emptyFSTMTFSeqB,
-                           FSTMTFILB,
-                           loadFSTMTFILB,
-                           updateFSTMTFILB,
-                           emptyFSTMTFILB,
                            seqFromMTFB,
                            -- * From MTF (Text) functions
-                           FMTFSeqT,
-                           FSTMTFSeqT,
-                           updateFSTMTFSeqT,
-                           emptyFSTMTFSeqT,
-                           FSTMTFILT,
-                           loadFSTMTFILT,
-                           updateFSTMTFILT,
-                           emptyFSTMTFILT,
                            seqFromMTFT
                          ) where
 
@@ -97,6 +56,7 @@ import Control.Monad as CM
 import Control.Monad.ST as CMST
 import Data.ByteString as BS
 import Data.Foldable as DFold (foldr')
+import Data.RLE.Internal (Pack)
 import Data.Set as DSet
 import Data.Sequence as DS (Seq(..),deleteAt,findIndexL,empty,index,unstableSort,(|>),(<|))
 import Data.STRef as DSTR
@@ -108,11 +68,7 @@ import Prelude as P
 {-Base level types.-}
 
 -- | Basic MTF ('ByteString') data type.
-newtype MTFB = MTFB ((Seq Int,Seq (Maybe ByteString)))
-  deriving (Eq,Ord,Show,Read,Generic)
-
--- | Basic MTF ('Text') data type.
-newtype MTFT = MTFT ((Seq Int,Seq (Maybe Text)))
+newtype MTF b = MTF ((Seq Int,Seq (Maybe b)))
   deriving (Eq,Ord,Show,Read,Generic)
 
 {-------------------}
@@ -151,87 +107,40 @@ nubSeq' xs =
 
 {-toMTF (ByteString) functions.-}
 
--- | Abstract 'PBMTFSeqB' type utilizing a 'Seq'
-type PBMTFSeqB = Seq (Maybe ByteString)
-
--- | Abstract 'MTFLSSeqB' type utilizing a 'Seq'.
-type MTFLSSeqB = (Seq Int,Seq (Maybe ByteString))
-
--- | Abstract data type representing a 'MTFLSSeqB' in the (strict) ST monad.
-type STMTFLSSeqB s a = STRef s MTFLSSeqB
-
 -- | Abstract data type to initialize a 'STMTFLSSeqB'
 -- using the initial list.
-initializeSTMTFLSSeqB :: STMTFLSSeqB s (Seq Int,Seq (Maybe ByteString))
-                     -> Seq (Maybe ByteString)
+initializeSTMTFLSSeq :: STRef s (Seq Int,Seq (Maybe b))
+                     -> Seq (Maybe b)
                      -> ST s ()
-initializeSTMTFLSSeqB s DS.Empty = do
-  (s2i,_) <- readSTRef s
-  writeSTRef s (s2i,DS.empty)
-initializeSTMTFLSSeqB s e        = do
+initializeSTMTFLSSeq s e        = do
   (s2i,_) <- readSTRef s
   writeSTRef s (s2i,e)
 
 -- | State function to update 'MTFLSSeqB'
 -- with each step of the MTF.
-updateSTMTFLSSeqB :: STMTFLSSeqB s (Seq Int,Seq (Maybe ByteString))
+updateSTMTFLSSeq :: STRef s (Seq Int,Seq (Maybe b))
                   -> Int
                   -> ST s ()
-updateSTMTFLSSeqB s i = do
+updateSTMTFLSSeq s i = do
   (s2i,s2b) <- readSTRef s
   let newheade = DS.index s2b i
   writeSTRef s (s2i,DS.deleteAt i s2b)
   (ns2i,ns2b) <- readSTRef s
   writeSTRef s (ns2i DS.|> i,newheade DS.<| ns2b)
 
--- | State function to create empty 'STMTFLSSeqB' type.
-emptySTMTFLSSeqB :: ST s (STMTFLSSeqB s a)
-emptySTMTFLSSeqB = newSTRef (DS.empty,DS.empty)
-
--- | Abstract 'STMTFILB' and associated state type.
-type STMTFILB s a = STRef s (Seq (Maybe ByteString))
-
--- | State function to load list into 'STMTFILB'.
-loadSTMTFILB :: STMTFILB s (Maybe ByteString)
-             -> Seq (Maybe ByteString)
-             -> ST s ()
-loadSTMTFILB s e = writeSTRef s e
-
--- | State function to create empty 'STMTFILB' type.
-emptySTMTFILB :: ST s (STMTFILB s a)
-emptySTMTFILB = newSTRef DS.empty
-
--- | Abstract 'STMTFCounterB' and associated state type.
-type STMTFCounterB s a = STRef s Int
-
--- | State function to update 'STMTFCounterB'.
-updateSTMTFCounterB :: STMTFCounterB s Int
-                    -> Int
-                    -> ST s ()
-updateSTMTFCounterB s e = writeSTRef s e
-
--- | State function to create empty 'STMTFCounterB' type.
-emptySTMTFCounterB :: ST s (STMTFCounterB s Int)
-emptySTMTFCounterB = newSTRef (-1)
-
 -- | Strict state monad function.
-seqToMTFB :: PBMTFSeqB
-          -> MTFLSSeqB
-seqToMTFB DS.Empty      = CMST.runST $ do
-  bmtfseqstackempty  <- emptySTMTFLSSeqB
+seqToMTF :: forall b. (Pack b, Ord b) => Seq (Maybe b) -> (Seq Int,Seq (Maybe b))
+seqToMTF DS.Empty      = CMST.runST $ do
+  bmtfseqstackempty  <- newSTRef (DS.empty,DS.empty)
   bmtfseqstackemptyr <- readSTRef bmtfseqstackempty
   return bmtfseqstackemptyr
-seqToMTFB xs            = CMST.runST $ do
-  bmtfseqstack     <- emptySTMTFLSSeqB
-  bmtfinitiallist  <- emptySTMTFILB
-  bmtfcounterstack <- emptySTMTFCounterB
+seqToMTF xs            = CMST.runST $ do
+  bmtfseqstack     <- newSTRef (DS.empty,DS.empty)
+  bmtfinitiallist  <- newSTRef DS.empty
+  bmtfcounterstack <- newSTRef (-1 :: Int)
   let il = nubSeq' xs
-  loadSTMTFILB bmtfinitiallist
-               il
-  iMTFB xs
-        bmtfinitiallist
-        bmtfseqstack
-        bmtfcounterstack
+  writeSTRef bmtfinitiallist il
+  iMTFB xs bmtfinitiallist bmtfseqstack bmtfcounterstack
   bmtfseqstackr <- readSTRef bmtfseqstack
   return bmtfseqstackr
     where
@@ -239,18 +148,17 @@ seqToMTFB xs            = CMST.runST $ do
       iMTFB (y DS.:<| ys) bmtfil bmtfss bmtfcs = do
         cbmtfcs <- readSTRef bmtfcs
         if | cbmtfcs == (-1)
-           -> do updateSTMTFCounterB bmtfcs
+           -> do writeSTRef bmtfcs
                                      1
                  cbmtfil <- readSTRef bmtfil
-                 initializeSTMTFLSSeqB bmtfss
-                                       cbmtfil
+                 initializeSTMTFLSSeq bmtfss cbmtfil
                  (_,cbmtfss) <- readSTRef bmtfss
                  case (DS.findIndexL (\z -> z == y) cbmtfss) of
                    Nothing     -> iMTFB ys
                                         bmtfil
                                         bmtfss
                                         bmtfcs
-                   Just bindex -> do updateSTMTFLSSeqB bmtfss
+                   Just bindex -> do updateSTMTFLSSeq bmtfss
                                                        bindex
                                      iMTFB ys
                                            bmtfil
@@ -263,136 +171,12 @@ seqToMTFB xs            = CMST.runST $ do
                                         bmtfil
                                         bmtfss
                                         bmtfcs
-                   Just bindex -> do updateSTMTFLSSeqB bmtfss
+                   Just bindex -> do updateSTMTFLSSeq bmtfss
                                                        bindex
                                      iMTFB ys
                                            bmtfil
                                            bmtfss
                                            bmtfcs
-
-{-------------------------------}
-
-
-{-toMTF (Text) functions.-}
-
--- | Abstract 'PTMTFSeqT' type utilizing a 'Seq'
-type PTMTFSeqT = Seq (Maybe Text)
-
--- | Abstract 'MTFLSSeqT' type utilizing a 'Seq'.
-type MTFLSSeqT = (Seq Int,Seq (Maybe Text))
-
--- | Abstract data type representing a 'MTFLSSeqT' in the (strict) ST monad.
-type STMTFLSSeqT s a = STRef s MTFLSSeqT
-
--- | Abstract data type to initialize a 'STMTFLSSeqT'
--- using the initial list.
-initializeSTMTFLSSeqT :: STMTFLSSeqT s (Seq Int,Seq (Maybe Text))
-                      -> Seq (Maybe Text)
-                      -> ST s ()
-initializeSTMTFLSSeqT s DS.Empty  = do
-  (s2i,_) <- readSTRef s
-  writeSTRef s (s2i,DS.empty)
-initializeSTMTFLSSeqT s e         = do
-  (s2i,_) <- readSTRef s
-  writeSTRef s (s2i,e)
-
--- | State function to update 'STMTFLSSeqT'
--- with each step of the MTF.
-updateSTMTFLSSeqT :: STMTFLSSeqT s (Seq Int,Seq (Maybe Text))
-                  -> Int
-                  -> ST s ()
-updateSTMTFLSSeqT s i = do
-  (s2i,s2b) <- readSTRef s
-  let newheade = DS.index s2b i
-  writeSTRef s (s2i,DS.deleteAt i s2b)
-  (ns2i,ns2b) <- readSTRef s
-  writeSTRef s (ns2i DS.|> i,newheade DS.<| ns2b)
-
--- | State function to create empty 'STMTFLSSeqT' type.
-emptySTMTFLSSeqT :: ST s (STMTFLSSeqT s a)
-emptySTMTFLSSeqT = newSTRef (DS.empty,DS.empty)
-
--- | Abstract 'STMTFILT' and associated state type.
-type STMTFILT s a = STRef s (Seq (Maybe Text))
-
--- | State function to load list into 'STMTFILT'.
-loadSTMTFILT :: STMTFILT s (Maybe Text)
-             -> Seq (Maybe Text)
-             -> ST s ()
-loadSTMTFILT s e = writeSTRef s e
-
--- | State function to create empty 'STMTFILT' type.
-emptySTMTFILT :: ST s (STMTFILT s a)
-emptySTMTFILT = newSTRef DS.empty
-
--- | Abstract 'STMTFCounterT' and associated state type.
-type STMTFCounterT s a = STRef s Int
-
--- | State function to update 'STMTFCounterT'.
-updateSTMTFCounterT :: STMTFCounterT s Int
-                    -> Int
-                    -> ST s ()
-updateSTMTFCounterT s e = writeSTRef s e
-
--- | State function to create empty 'STMTFCounterT' type.
-emptySTMTFCounterT :: ST s (STMTFCounterT s Int)
-emptySTMTFCounterT = newSTRef (-1)
-
--- | Strict state monad function.
-seqToMTFT :: PTMTFSeqT
-          -> MTFLSSeqT
-seqToMTFT DS.Empty      = CMST.runST $ do
-  tmtfseqstackempty  <- emptySTMTFLSSeqT
-  tmtfseqstackemptyr <- readSTRef tmtfseqstackempty
-  return tmtfseqstackemptyr
-seqToMTFT xs            = CMST.runST $ do
-  tmtfseqstack     <- emptySTMTFLSSeqT
-  tmtfinitiallist  <- emptySTMTFILT
-  tmtfcounterstack <- emptySTMTFCounterT
-  let il = nubSeq' xs
-  loadSTMTFILT tmtfinitiallist
-               il
-  iMTFT xs
-        tmtfinitiallist
-        tmtfseqstack
-        tmtfcounterstack
-  tmtfseqstackr <- readSTRef tmtfseqstack
-  return tmtfseqstackr
-    where
-      iMTFT DS.Empty      _      _      _      = pure ()
-      iMTFT (y DS.:<| ys) tmtfil tmtfss tmtfcs = do
-        ctmtfcs <- readSTRef tmtfcs
-        if | ctmtfcs == (-1)
-           -> do updateSTMTFCounterT tmtfcs
-                                     1
-                 ctmtfil <- readSTRef tmtfil
-                 initializeSTMTFLSSeqT tmtfss
-                                       ctmtfil
-                 (_,ctmtfss) <- readSTRef tmtfss
-                 case (DS.findIndexL (\z -> z == y) ctmtfss) of
-                   Nothing     -> iMTFT ys
-                                        tmtfil
-                                        tmtfss
-                                        tmtfcs
-                   Just tindex -> do updateSTMTFLSSeqT tmtfss
-                                                       tindex
-                                     iMTFT ys
-                                           tmtfil
-                                           tmtfss
-                                           tmtfcs
-           | otherwise
-           -> do (_,ctmtfss) <- readSTRef tmtfss
-                 case (DS.findIndexL (\z -> z == y) ctmtfss) of
-                   Nothing     -> iMTFT ys
-                                        tmtfil
-                                        tmtfss
-                                        tmtfcs
-                   Just tindex -> do updateSTMTFLSSeqT tmtfss
-                                                       tindex
-                                     iMTFT ys
-                                           tmtfil
-                                           tmtfss
-                                           tmtfcs
 
 {-------------------------}
 
@@ -420,15 +204,12 @@ updateFSTMTFSeqB s (Just e) = do
 emptyFSTMTFSeqB :: ST s (FSTMTFSeqB s a)
 emptyFSTMTFSeqB = newSTRef DS.empty
 
--- | Abstract 'FSTMTFILB' and associated state type.
-type FSTMTFILB s a = STRef s (Seq (Maybe ByteString))
-
 -- | State function to load list into 'FSTMTFILB'.
-loadFSTMTFILB :: FSTMTFILB s (Maybe ByteString) -> Seq (Maybe ByteString) -> ST s ()
+loadFSTMTFILB :: STRef s (Seq (Maybe ByteString)) -> Seq (Maybe ByteString) -> ST s ()
 loadFSTMTFILB s e = writeSTRef s e
 
 -- | State function to update 'FSTMTFILB'.
-updateFSTMTFILB :: FSTMTFILB s (Maybe ByteString)
+updateFSTMTFILB :: STRef s (Seq (Maybe ByteString))
                 -> Int
                 -> ST s ()
 updateFSTMTFILB s i = do
@@ -439,22 +220,22 @@ updateFSTMTFILB s i = do
   writeSTRef s (newheade DS.<| ns2)
 
 -- | State function to create empty 'FSTMTFILB' type.
-emptyFSTMTFILB :: ST s (FSTMTFILB s a)
+emptyFSTMTFILB :: ST s (STRef s (Seq (Maybe ByteString)))
 emptyFSTMTFILB = newSTRef DS.empty
 
 -- | Strict state monad function.
-seqFromMTFB :: MTFB
+seqFromMTFB :: MTF ByteString
             -> FMTFSeqB
-seqFromMTFB (MTFB (DS.Empty,_)) = CMST.runST $ do
+seqFromMTFB (MTF (DS.Empty,_)) = CMST.runST $ do
   fbmtfseqstackempty  <- emptyFSTMTFSeqB
   fbmtfseqstackemptyr <- readSTRef fbmtfseqstackempty
   return fbmtfseqstackemptyr
-seqFromMTFB (MTFB (_,DS.Empty)) = CMST.runST $ do
+seqFromMTFB (MTF (_,DS.Empty)) = CMST.runST $ do
   fbmtfseqstackempty  <- emptyFSTMTFSeqB
   fbmtfseqstackemptyr <- readSTRef fbmtfseqstackempty
   return fbmtfseqstackemptyr
 seqFromMTFB xs                  = CMST.runST $ do
-  let xss = (\(MTFB b) -> b) xs
+  let xss = (\(MTF b) -> b) xs
   fbmtfseqstack     <- emptyFSTMTFSeqB
   fbmtfinitiallist  <- emptyFSTMTFILB
   let il = nubSeq' (snd xss)
@@ -528,18 +309,18 @@ emptyFSTMTFILT :: ST s (FSTMTFILT s a)
 emptyFSTMTFILT = newSTRef DS.empty
 
 -- | Strict state monad function.
-seqFromMTFT :: MTFT
+seqFromMTFT :: MTF Text
             -> FMTFSeqT
-seqFromMTFT (MTFT (DS.Empty,_)) = CMST.runST $ do
+seqFromMTFT (MTF (DS.Empty,_)) = CMST.runST $ do
   ftmtfseqstackempty  <- emptyFSTMTFSeqT
   ftmtfseqstackemptyr <- readSTRef ftmtfseqstackempty
   return ftmtfseqstackemptyr
-seqFromMTFT (MTFT (_,DS.Empty)) = CMST.runST $ do
+seqFromMTFT (MTF (_,DS.Empty)) = CMST.runST $ do
   ftmtfseqstackempty  <- emptyFSTMTFSeqT
   ftmtfseqstackemptyr <- readSTRef ftmtfseqstackempty
   return ftmtfseqstackemptyr
 seqFromMTFT xs                  = CMST.runST $ do
-  let xss = (\(MTFT t) -> t) xs
+  let xss = (\(MTF t) -> t) xs
   ftmtfseqstack     <- emptyFSTMTFSeqT
   ftmtfinitiallist  <- emptyFSTMTFILT
   let il = nubSeq' (snd xss)
