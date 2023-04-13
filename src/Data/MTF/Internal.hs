@@ -46,21 +46,17 @@ module Data.MTF.Internal ( -- * Base MTF types
                            nubSeq',
                            -- * To MTF functions
                            seqToMTF,
-                           -- * From MTF (ByteString) functions
-                           seqFromMTFB,
-                           -- * From MTF (Text) functions
-                           seqFromMTFT
+                           -- * From MTF functions
+                           seqFromMTF,
                          ) where
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Data.ByteString as BS
 import Data.Foldable as DFold (foldr')
 import Data.RLE.Internal (Pack)
 import Data.Set as DSet
 import Data.Sequence as DS (Seq(..),deleteAt,findIndexL,empty,index,unstableSort,(|>),(<|))
 import Data.STRef as DSTR
-import Data.Text as DText
 import GHC.Generics (Generic)
 import Prelude as P
 
@@ -183,63 +179,40 @@ seqToMTF xs            = CMST.runST $ do
 
 {-fromMTF (ByteString) functions.-}
 
--- | Abstract 'FMTFSeqB' type utilizing a 'Seq'.
-type FMTFSeqB = Seq (Maybe ByteString)
-
--- | Abstract data type representing a 'FMTFSeqB' in the (strict) ST monad.
-type FSTMTFSeqB s a = STRef s FMTFSeqB
-
 -- | State function to update 'FSTMTFSeqB' with each step of the inverse MTF.
-updateFSTMTFSeqB :: FSTMTFSeqB s (Maybe ByteString)
-                 -> (Maybe ByteString)
-                 -> ST s ()
-updateFSTMTFSeqB s Nothing  = do
+updateFSTMTFSeq :: Pack b => STRef s (Seq (Maybe b)) -> (Maybe b) -> ST s ()
+updateFSTMTFSeq s Nothing  = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> Nothing)
-updateFSTMTFSeqB s (Just e) = do
+updateFSTMTFSeq s (Just e) = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> (Just e))
 
--- | State function to create empty 'FSTMTFSeqB' type.
-emptyFSTMTFSeqB :: ST s (FSTMTFSeqB s a)
-emptyFSTMTFSeqB = newSTRef DS.empty
-
--- | State function to load list into 'FSTMTFILB'.
-loadFSTMTFILB :: STRef s (Seq (Maybe ByteString)) -> Seq (Maybe ByteString) -> ST s ()
-loadFSTMTFILB s e = writeSTRef s e
-
 -- | State function to update 'FSTMTFILB'.
-updateFSTMTFILB :: STRef s (Seq (Maybe ByteString))
-                -> Int
-                -> ST s ()
-updateFSTMTFILB s i = do
+updateFSTMTFIL :: Pack b => STRef s (Seq (Maybe b)) -> Int -> ST s ()
+updateFSTMTFIL s i = do
   s2 <- readSTRef s
   let newheade = DS.index s2 i
   writeSTRef s (DS.deleteAt i s2)
   ns2 <- readSTRef s
   writeSTRef s (newheade DS.<| ns2)
 
--- | State function to create empty 'FSTMTFILB' type.
-emptyFSTMTFILB :: ST s (STRef s (Seq (Maybe ByteString)))
-emptyFSTMTFILB = newSTRef DS.empty
-
 -- | Strict state monad function.
-seqFromMTFB :: MTF ByteString
-            -> FMTFSeqB
-seqFromMTFB (MTF (DS.Empty,_)) = CMST.runST $ do
-  fbmtfseqstackempty  <- emptyFSTMTFSeqB
+seqFromMTF :: (Pack b, Ord b) => MTF b -> Seq (Maybe b)
+seqFromMTF (MTF (DS.Empty,_)) = CMST.runST $ do
+  fbmtfseqstackempty  <- newSTRef DS.empty
   fbmtfseqstackemptyr <- readSTRef fbmtfseqstackempty
   return fbmtfseqstackemptyr
-seqFromMTFB (MTF (_,DS.Empty)) = CMST.runST $ do
-  fbmtfseqstackempty  <- emptyFSTMTFSeqB
+seqFromMTF (MTF (_,DS.Empty)) = CMST.runST $ do
+  fbmtfseqstackempty  <- newSTRef DS.empty
   fbmtfseqstackemptyr <- readSTRef fbmtfseqstackempty
   return fbmtfseqstackemptyr
-seqFromMTFB xs                  = CMST.runST $ do
+seqFromMTF xs                  = CMST.runST $ do
   let xss = (\(MTF b) -> b) xs
-  fbmtfseqstack     <- emptyFSTMTFSeqB
-  fbmtfinitiallist  <- emptyFSTMTFILB
+  fbmtfseqstack     <- newSTRef DS.empty
+  fbmtfinitiallist  <- newSTRef DS.empty
   let il = nubSeq' (snd xss)
-  loadFSTMTFILB fbmtfinitiallist
+  writeSTRef fbmtfinitiallist
                 il
   iFMTFB (fst xss)
          fbmtfinitiallist
@@ -250,97 +223,10 @@ seqFromMTFB xs                  = CMST.runST $ do
       iFMTFB DS.Empty      _       _       = pure ()
       iFMTFB (y DS.:<| ys) fbmtfil fbmtfss = do
         cfbmtfil <- readSTRef fbmtfil
-        updateFSTMTFSeqB fbmtfss
+        updateFSTMTFSeq fbmtfss
                          (DS.index cfbmtfil y)
-        updateFSTMTFILB fbmtfil
+        updateFSTMTFIL fbmtfil
                         y
         iFMTFB ys
                fbmtfil
                fbmtfss
-
-{---------------------------------}
-
-
-{-fromRLE (Text) functions.-}
-
--- | Abstract 'FMTFSeqT' type utilizing a 'Seq'.
-type FMTFSeqT = Seq (Maybe Text)
-
--- | Abstract data type representing a 'FMTFSeqT' in the (strict) ST monad.
-type FSTMTFSeqT s a = STRef s FMTFSeqT
-
--- | State function to update 'FSTMTFSeqT' with each step of the inverse MTF.
-updateFSTMTFSeqT :: FSTMTFSeqT s (Maybe Text)
-                 -> (Maybe Text)
-                 -> ST s ()
-updateFSTMTFSeqT s Nothing  = do
-  s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-updateFSTMTFSeqT s (Just e) = do
-  s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> (Just e))
-
--- | State function to create empty 'FSTMTFSeqT' type.
-emptyFSTMTFSeqT :: ST s (FSTMTFSeqT s a)
-emptyFSTMTFSeqT = newSTRef DS.empty
-
--- | Abstract 'FSTMTFILT' and associated state type.
-type FSTMTFILT s a = STRef s (Seq (Maybe Text))
-
--- | State function to load list into 'FSTMTFILT'.
-loadFSTMTFILT :: FSTMTFILT s (Maybe Text)
-              -> Seq (Maybe Text)
-              -> ST s ()
-loadFSTMTFILT s e = writeSTRef s e
-
--- | State function to update 'FSTMTFILT'.
-updateFSTMTFILT :: FSTMTFILT s (Maybe Text)
-                -> Int
-                -> ST s ()
-updateFSTMTFILT s i = do
-  s2 <- readSTRef s
-  let newheade = DS.index s2 i
-  writeSTRef s (DS.deleteAt i s2)
-  ns2 <- readSTRef s
-  writeSTRef s (newheade DS.<| ns2)
-
--- | State function to create empty 'FSTMTFILT' type.
-emptyFSTMTFILT :: ST s (FSTMTFILT s a)
-emptyFSTMTFILT = newSTRef DS.empty
-
--- | Strict state monad function.
-seqFromMTFT :: MTF Text
-            -> FMTFSeqT
-seqFromMTFT (MTF (DS.Empty,_)) = CMST.runST $ do
-  ftmtfseqstackempty  <- emptyFSTMTFSeqT
-  ftmtfseqstackemptyr <- readSTRef ftmtfseqstackempty
-  return ftmtfseqstackemptyr
-seqFromMTFT (MTF (_,DS.Empty)) = CMST.runST $ do
-  ftmtfseqstackempty  <- emptyFSTMTFSeqT
-  ftmtfseqstackemptyr <- readSTRef ftmtfseqstackempty
-  return ftmtfseqstackemptyr
-seqFromMTFT xs                  = CMST.runST $ do
-  let xss = (\(MTF t) -> t) xs
-  ftmtfseqstack     <- emptyFSTMTFSeqT
-  ftmtfinitiallist  <- emptyFSTMTFILT
-  let il = nubSeq' (snd xss)
-  loadFSTMTFILT ftmtfinitiallist
-                il
-  iFMTFT (fst xss)
-         ftmtfinitiallist
-         ftmtfseqstack
-  ftmtfseqstackr <- readSTRef ftmtfseqstack
-  return ftmtfseqstackr
-    where
-      iFMTFT DS.Empty      _       _       = pure ()
-      iFMTFT (y DS.:<| ys) ftmtfil ftmtfss = do
-        cftmtfil <- readSTRef ftmtfil
-        updateFSTMTFSeqT ftmtfss
-                         (DS.index cftmtfil y)
-        updateFSTMTFILT ftmtfil
-                        y
-        iFMTFT ys
-               ftmtfil
-               ftmtfss
-
-{---------------------------}

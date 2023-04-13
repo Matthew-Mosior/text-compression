@@ -213,7 +213,7 @@ textBWTFromMTFT :: MTF Text
 textBWTFromMTFT (MTF (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFT (MTF (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFT xs                  =
-  BWT (seqFromMTFT xs)
+  BWT (seqFromMTF xs)
 
 -- | Takes a 'MTF' and returns
 -- the 'BWT' of 'ByteString's.
@@ -222,7 +222,7 @@ bytestringBWTFromMTFT :: MTF Text
 bytestringBWTFromMTFT (MTF (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFT (MTF (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFT xs                  = do
-  let originalbwtb = seqFromMTFT xs
+  let originalbwtb = seqFromMTF xs
   BWT (fmap (fmap DTE.encodeUtf8) originalbwtb)
 
 -- | Takes a 'MTF' and returns
@@ -232,7 +232,7 @@ textBWTFromMTFB :: MTF ByteString
 textBWTFromMTFB (MTF (DS.Empty,_)) = BWT DS.Empty
 textBWTFromMTFB (MTF (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFB xs                  = do
-  let originalbwtt = seqFromMTFB xs
+  let originalbwtt = seqFromMTF xs
   BWT (fmap (fmap DTE.decodeUtf8) originalbwtt)
 
 -- | Take a 'MTF' and returns
@@ -242,7 +242,7 @@ bytestringBWTFromMTFB :: MTF ByteString
 bytestringBWTFromMTFB (MTF (DS.Empty,_)) = BWT DS.Empty
 bytestringBWTFromMTFB (MTF (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFB xs              =
-  BWT (seqFromMTFB xs)
+  BWT (seqFromMTF xs)
 
 -- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'Text's.
@@ -251,7 +251,7 @@ textFromMTFB :: MTF ByteString
 textFromMTFB (MTF (DS.Empty,_)) = DS.Empty
 textFromMTFB (MTF (_,DS.Empty)) = DS.Empty
 textFromMTFB xs                  = do
-  let originalt = seqFromMTFB xs
+  let originalt = seqFromMTF xs
   fmap (fmap DTE.decodeUtf8) originalt
 
 -- | Takes a 'MTF' and returns
@@ -261,7 +261,7 @@ bytestringFromMTFB :: MTF ByteString
 bytestringFromMTFB (MTF (DS.Empty,_)) = DS.Empty
 bytestringFromMTFB (MTF (_,DS.Empty)) = DS.Empty
 bytestringFromMTFB xs                  =
-  seqFromMTFB xs
+  seqFromMTF xs
 
 -- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'Text's.
@@ -270,7 +270,7 @@ textFromMTFT :: MTF Text
 textFromMTFT (MTF (DS.Empty,_)) = DS.Empty
 textFromMTFT (MTF (_,DS.Empty)) = DS.Empty
 textFromMTFT xs                  =
-  seqFromMTFT xs
+  seqFromMTF xs
 
 -- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'ByteString's.
@@ -279,7 +279,7 @@ bytestringFromMTFT :: MTF Text
 bytestringFromMTFT (MTF (DS.Empty,_)) = DS.Empty
 bytestringFromMTFT (MTF (_,DS.Empty)) = DS.Empty
 bytestringFromMTFT xs                  = do
-  let originalb = seqFromMTFT xs
+  let originalb = seqFromMTF xs
   fmap (fmap DTE.encodeUtf8) originalb
 
 {---------------------}
