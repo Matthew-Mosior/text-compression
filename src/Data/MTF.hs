@@ -285,4 +285,15 @@ bytestringFromMTFT xs                  = do
 {---------------------}
 
 tests :: Test
-tests = TestList []
+tests =
+  TestList
+  [ TestCase (assertEqual "test 1"
+               (MTFB ([3,1,2,0,0,3,0,3,0,1],
+                      [Just "b",Just "c",Just "a",Nothing]))
+               (textToBWTToMTFB "aaabbbccc"))
+  , TestCase (assertEqual "test 2"
+               "aaabbbccc"
+               (textFromBWTFromMTFB
+                 (MTFB ([3,1,2,0,0,3,0,3,0,1],
+                        [Just "b",Just "c",Just "a",Nothing]))))
+  ]
