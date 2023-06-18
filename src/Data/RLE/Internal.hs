@@ -40,39 +40,24 @@
 -- and 'runST' in the [Control.Monad.ST](https://hackage.haskell.org/package/base-4.17.0.0/docs/Control-Monad-ST.html) library.
 
 
-module Data.RLE.Internal ( -- * Base RLE types
-                           Pack(pck, unpck, Itm, one),
+module Data.RLE.Internal ( Pack(pck, unpck, Itm, one),
+                           -- * Base RLE types
                            RLE(..),
                            -- * To RLE functions
-                           RLESeq,
-                           STRLESeq,
-                           pushSTRLESeq,
-                           emptySTRLESeq,
-                           STRLETemp,
-                           updateSTRLETemp,
-                           emptySTRLETemp,
-                           STRLECounter,
-                           updateSTRLECounter,
-                           emptySTRLECounter,
                            seqToRLE,
                            -- * From RLE functions
-                           FRLESeq,
-                           FSTRLESeq,
-                           pushFSTRLESeq,
-                           emptyFSTRLESeq,
                            seqFromRLE,
-                           -- * From RLE (Text) functions
                          ) where
 
 import Control.Monad as CM
 import Control.Monad.ST as CMST
-import Data.ByteString as BS
+import Data.ByteString as BS hiding (count)
 import Data.ByteString.Char8 as BSC8 (pack,unpack)
 import Data.Maybe as DMaybe (fromJust,isJust,isNothing)
 import Data.Sequence as DS (Seq(..),empty,(|>))
 import Data.Sequence.Internal as DSI
 import Data.STRef as DSTR
-import Data.Text as DText
+import Data.Text as DText hiding (count)
 import Data.Word (Word8)
 import GHC.Generics (Generic)
 import Prelude as P
@@ -110,225 +95,95 @@ instance Pack Text where
 newtype RLE b = RLE (Seq (Maybe b))
   deriving (Eq,Ord,Show,Read,Generic)
 
-{-------------------}
-
-
-{-toRLE (ByteString) functions.-}
-
--- | Abstract 'RLESeq' type utilizing a 'Seq'.
-type RLESeq b = Seq (Maybe b)
-
--- | Abstract data type representing a 'RLESeq b' in the (strict) ST monad.
-type STRLESeq b s a = STRef s (RLESeq b)
-
 -- | State function to push 'RLESeq' data into stack.
-pushSTRLESeq :: STRLESeq b s (Maybe b)
-              -> Maybe b
-              -> ST s ()
-pushSTRLESeq s Nothing  = do
+push :: STRef s (Seq (Maybe b)) -> Maybe b -> ST s ()
+push s e = do
   s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-pushSTRLESeq s (Just e) = do
-  s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Just e)
+  writeSTRef s (s2 DS.|> e)
 
--- | State function to create empty 'STRLESeq b' type.
-emptySTRLESeq :: ST s (STRLESeq b s a)
-emptySTRLESeq = newSTRef DS.empty
-
--- | Abstract 'STRLETemp' and associated state type.
-type STRLETemp b s a = STRef s (Maybe b)
-
--- | State function to update 'STRLETemp'.
-updateSTRLETemp :: STRLETemp b s (Maybe b)
-                 -> Maybe b
-                 -> ST s ()
-updateSTRLETemp s Nothing  = writeSTRef s Nothing
-updateSTRLETemp s (Just e) = writeSTRef s (Just e)
-
--- | State function to create empty 'STRLETemp' type.
-emptySTRLETemp :: Monoid b => ST s (STRLETemp b s a)
-emptySTRLETemp = newSTRef (Just mempty)
-
--- | Abstract 'STRLECounter' state type.
-type STRLECounter b s a = STRef s Int
-
--- | State function to update 'STRLECounter'.
-updateSTRLECounter :: STRLECounter b s Int
-                    -> Int
-                    -> ST s ()
-updateSTRLECounter s e = writeSTRef s e
-
--- | State function to create empty 'STRLECounter' type.
-emptySTRLECounter :: ST s (STRLECounter b s Int)
-emptySTRLECounter = newSTRef (-1)
-
--- | Strict state monad function.
-seqToRLE :: forall b. Pack b => RLESeq b -> RLESeq b
+seqToRLE :: forall b. Pack b => Seq (Maybe b) -> Seq (Maybe b)
 seqToRLE DS.Empty      = CMST.runST $ do
-  brleseqstackempty  <- emptySTRLESeq
-  brleseqstackemptyr <- readSTRef brleseqstackempty
-  return brleseqstackemptyr
+  stackRef  <- newSTRef DS.empty
+  stack <- readSTRef stackRef
+  return stack
 seqToRLE (x DS.:<| xs) = CMST.runST $ do
-  brleseqstack     <- emptySTRLESeq
-  brlecounterstack <- emptySTRLECounter
-  brletempstack    <- emptySTRLETemp
-  updateSTRLECounter brlecounterstack
-                      1
-  updateSTRLETemp brletempstack
-                   x
-  iRLE xs
-        brleseqstack
-        brlecounterstack
-        brletempstack
-  brleseqstackr <- readSTRef brleseqstack
-  return brleseqstackr
+  stackRef     <- newSTRef DS.empty
+  countersRef <- newSTRef (-1)
+  itemsRef    <- newSTRef (Just mempty)
+  writeSTRef countersRef 1
+  writeSTRef itemsRef x
+  iRLE xs stackRef countersRef itemsRef
+  stack <- readSTRef stackRef
+  return stack
     where
       iRLE ::
            Seq (Maybe b)
-        -> STRef s (RLESeq b)
+        -> STRef s (Seq (Maybe b))
         -> STRef s Int
         -> STRef s (Maybe b)
         -> ST s ()
-      iRLE DS.Empty      brless brlecs brlets = do
-        cbrlecs <- readSTRef brlecs
-        cbrlets <- readSTRef brlets
-        pushSTRLESeq brless
-                      (Just      $
-                       fromString $
-                       show cbrlecs)
-        pushSTRLESeq brless
-                      cbrlets
+      iRLE DS.Empty stackRef countRef brlets = do
+        count <- readSTRef countRef
+        item <- readSTRef brlets
+        push stackRef (Just $ fromString $ show count)
+        push stackRef item
         pure ()
-      iRLE (y DS.:<| ys) brless brlecs brlets = do
-        cbrlecs <- readSTRef brlecs
-        cbrlets <- readSTRef brlets
+      iRLE (y DS.:<| ys) stackRef countRef brlets = do
+        count <- readSTRef countRef
+        item <- readSTRef brlets
         if | isNothing y
-           -> do pushSTRLESeq brless
-                               (Just      $
-                                fromString $
-                                show cbrlecs)
-                 pushSTRLESeq brless
-                               cbrlets
-                 pushSTRLESeq brless
-                               (Just      $
-                                fromString $
-                                show (1 :: Int))
-                 pushSTRLESeq brless
-                               Nothing
-                 updateSTRLETemp brlets
-                                  Nothing
-                 iRLE ys
-                       brless
-                       brlecs
-                       brlets
-           | isNothing cbrlets
-           -> do updateSTRLECounter brlecs
-                                     1
-                 updateSTRLETemp brlets
-                                  y
-                 iRLE ys
-                       brless
-                       brlecs
-                       brlets
-           | fromJust cbrlets == fromJust y
-           -> do updateSTRLECounter brlecs
-                                     (cbrlecs + 1)
-                 iRLE ys
-                       brless
-                       brlecs
-                       brlets
+           -> do push stackRef (Just $ fromString $ show count)
+                 push stackRef item
+                 push stackRef (Just $ fromString $ show (1 :: Int))
+                 push stackRef Nothing
+                 writeSTRef brlets Nothing
+                 iRLE ys stackRef countRef brlets
+           | isNothing item
+           -> do writeSTRef countRef 1
+                 writeSTRef brlets y
+                 iRLE ys stackRef countRef brlets
+           | fromJust item == fromJust y
+           -> do writeSTRef countRef (count + 1)
+                 iRLE ys stackRef countRef brlets
            | otherwise
-           -> do pushSTRLESeq brless
-                               (Just      $
-                                fromString $
-                                show cbrlecs)
-                 pushSTRLESeq brless
-                               cbrlets
-                 updateSTRLECounter brlecs
-                                     1
-                 updateSTRLETemp brlets
-                                  y
-                 iRLE ys
-                       brless
-                       brlecs
-                       brlets
+           -> do push stackRef (Just $ fromString $ show count)
+                 push stackRef item
+                 writeSTRef countRef 1
+                 writeSTRef brlets y
+                 iRLE ys stackRef countRef brlets
 
-{-------------------------}
-
-
-{-fromRLE (ByteString) functions.-}
-
--- | Abstract 'FRLESeq' type utilizing a 'Seq'.
-type FRLESeq b = Seq (Maybe b)
-
--- | Abstract data type representing a 'FRLESeq' in the (strict) ST monad.
-type FSTRLESeq b s a = STRef s (FRLESeq b)
-
--- | State function to push 'FRLESeq' data into stack.
-pushFSTRLESeq :: FSTRLESeq b s (Maybe b)
-               -> (Maybe b)
-               -> ST s ()
-pushFSTRLESeq s Nothing  = do
-  s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Nothing)
-pushFSTRLESeq s (Just e) = do
-  s2 <- readSTRef s
-  writeSTRef s (s2 DS.|> Just e)
-
--- | State function to create empty 'FSTRLESeq' type.
-emptyFSTRLESeq :: ST s (FSTRLESeq b s a)
-emptyFSTRLESeq = newSTRef DS.empty
-
--- | Strict state monad function.
-seqFromRLE :: forall b. Pack b => RLE b -> FRLESeq b
+seqFromRLE :: forall b. Pack b => RLE b -> Seq (Maybe b)
 seqFromRLE (RLE DS.Empty) = CMST.runST $ do
-  fbrleseqstackempty  <- emptyFSTRLESeq
-  fbrleseqstackemptyr <- readSTRef fbrleseqstackempty
-  return fbrleseqstackemptyr
-seqFromRLE xs              = CMST.runST $ do
-  fbrleseqstack <- emptySTRLESeq
-  let rlebseq = (\(RLE b) -> b) xs
-  iFRLE rlebseq
-         fbrleseqstack
-  fbrleseqstackr <- readSTRef fbrleseqstack
-  return fbrleseqstackr
+  stackRef <- newSTRef DS.empty
+  stack <- readSTRef stackRef
+  return stack
+seqFromRLE (RLE xs) = CMST.runST $ do
+  stackRef <- newSTRef DS.empty
+  iFRLE xs stackRef
+  stack <- readSTRef stackRef
+  return stack
     where
-      iFRLE :: Seq (Maybe b) -> STRef s (RLESeq b) -> ST s ()
-      iFRLE (y1 DS.:<| y2 DS.:<| DS.Empty) fbrless =
-        if | isJust y1    &&
-             isNothing y2
-           -> do pushFSTRLESeq fbrless
-                                Nothing
+      iFRLE :: Seq (Maybe b) -> STRef s (Seq (Maybe b)) -> ST s ()
+      iFRLE (y1 DS.:<| y2 DS.:<| DS.Empty) stackRef =
+        if | isJust y1 && isNothing y2
+           -> do push stackRef Nothing
                  pure ()
            | otherwise
-           -> do let y1' = read $
-                           toString $
-                           fromJust y1 :: Int
+           -> do let y1' = read $ toString $ fromJust y1 :: Int
                  let y2' = fromJust y2
-                 CM.replicateM_ y1'
-                                (pushFSTRLESeq fbrless
-                                                (Just y2'))
+                 CM.replicateM_ y1' (push stackRef (Just y2'))
                  pure ()
-      iFRLE (y1 DS.:<| y2 DS.:<| ys)       fbrless =
-        if | isJust y1     &&
-             isNothing y2
-           -> do pushFSTRLESeq fbrless
-                                Nothing
-                 iFRLE ys
-                        fbrless
+      iFRLE (y1 DS.:<| y2 DS.:<| ys) stackRef =
+        if | isJust y1 && isNothing y2
+           -> do push stackRef Nothing
+                 iFRLE ys stackRef
            | otherwise
            -> do let y1' = read        $
                            toString $
                            fromJust y1 :: Int
                  let y2' = fromJust y2
-                 CM.replicateM_ y1'
-                                (pushFSTRLESeq fbrless
-                                                (Just y2'))
-                 iFRLE ys
-                        fbrless
+                 CM.replicateM_ y1' (push stackRef (Just y2'))
+                 iFRLE ys stackRef
       iFRLE (DSI.Seq EmptyT)               _       = pure ()
       iFRLE (DSI.Seq (Single _))           _       = pure ()
       iFRLE (DSI.Seq (Deep _ _ _ _))       _       = pure ()
-
-{---------------------------}

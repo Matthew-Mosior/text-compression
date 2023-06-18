@@ -49,13 +49,7 @@ module Data.BWT.Internal ( -- * Base BWT types
                            createSuffixArray,
                            -- * From BWT functions
                            sortTB,
-                           BWTSeq,
-                           STBWTSeq,
-                           pushSTBWTSeq,
-                           emptySTBWTSeq,
                            STBWTCounter,
-                           updateSTBWTCounter,
-                           emptySTBWTCounter,
                            magicInverseBWT,
                            -- * Create BWT Matrix function
                            createBWTMatrix
@@ -101,10 +95,8 @@ newtype BWTMatrix a = BWTMatrix (Seq (Seq (Maybe a)))
 
 -- | Computes the Burrows-Wheeler Transform (BWT) using the suffix array
 -- and the original string (represented as a 'DS.Seq' for performance).
-saToBWT :: SuffixArray a
-        -> Seq a
-        -> Seq (Maybe a)
-saToBWT DS.Empty      _ = DS.Empty
+saToBWT :: SuffixArray a -> Seq a -> Seq (Maybe a)
+saToBWT DS.Empty _ = DS.Empty
 saToBWT (y DS.:<| ys) t =
   if | suffixstartpos y /= 1
      -> (Just $ DS.index t (suffixstartpos y - 1 - 1))
@@ -156,56 +148,36 @@ sortTB :: (Ord a1,Ord a2)
 sortTB (c1,i1) (c2,i2) = compare c1 c2 <>
                          compare i1 i2
 
--- | Abstract BWTSeq type utilizing a 'DS.Seq'.
-type BWTSeq a = Seq a
-
--- | Abstract data type representing a BWTSeq in the (strict) ST monad.
-type STBWTSeq s a = STRef s (BWTSeq a)
-
 -- | State function to push BWTString data into stack.
-pushSTBWTSeq :: STBWTSeq s a
+pushSTBWTSeq :: STRef s (Seq a)
              -> a
              -> ST s ()
 pushSTBWTSeq s e = do
   s2 <- readSTRef s
   writeSTRef s (s2 DS.|> e)
 
--- | State function to create empty STBWTString type.
-emptySTBWTSeq :: ST s (STBWTSeq s a)
-emptySTBWTSeq = newSTRef DS.empty
-
 -- | Abstract BWTCounter and associated state type.
 type STBWTCounter s a = STRef s Int
 
--- | State function to update BWTCounter.
-updateSTBWTCounter :: STBWTCounter s Int
-                   -> Int
-                   -> ST s ()
-updateSTBWTCounter s e = writeSTRef s e
-
--- | State function to create empty STBWTCounter type.
-emptySTBWTCounter :: ST s (STBWTCounter s Int)
-emptySTBWTCounter = newSTRef (-1)
-
 -- | "Magic" Inverse BWT function.
 magicInverseBWT :: Seq (Maybe a,Int)
-                -> BWTSeq a
+                -> Seq a
 magicInverseBWT DS.Empty = CMST.runST $ do
-  bwtseqstackempty  <- emptySTBWTSeq
+  bwtseqstackempty  <- newSTRef DS.empty
   bwtseqstackemptyr <- readSTRef bwtseqstackempty
   return bwtseqstackemptyr
 magicInverseBWT xs       = CMST.runST $ do
-  bwtseqstack      <- emptySTBWTSeq
-  bwtcounterstackf <- emptySTBWTCounter
-  bwtcounterstacke <- emptySTBWTCounter
+  bwtseqstack      <- newSTRef DS.empty
+  bwtcounterstackf <- newSTRef (-1)
+  bwtcounterstacke <- newSTRef (-1)
   case (DS.findIndexL (\x -> isNothing $ fst x) xs) of
     Nothing           -> do bwtseqstackr <- readSTRef bwtseqstack
                             return bwtseqstackr
     Just nothingindex -> do let nothingfirst = DS.index xs
                                                         nothingindex
-                            updateSTBWTCounter bwtcounterstacke
+                            writeSTRef bwtcounterstacke
                                                nothingindex
-                            updateSTBWTCounter bwtcounterstackf
+                            writeSTRef bwtcounterstackf
                                                (snd nothingfirst)
                             iBWT xs
                                  bwtseqstack
@@ -221,8 +193,7 @@ magicInverseBWT xs       = CMST.runST $ do
             let next = DS.index ys cbwtcsf
             pushSTBWTSeq bwtss
                          (DMaybe.fromJust $ fst next)
-            updateSTBWTCounter bwtcsf
-                               (snd next)
+            writeSTRef bwtcsf (snd next)
             iBWT ys
                  bwtss
                  bwtcsf

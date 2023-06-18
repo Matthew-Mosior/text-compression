@@ -17,16 +17,16 @@
 --
 -- Users will get the most mileage by first compressing to a 'BWT'
 -- on the initial 'ByteString' or 'Text' input before compressing to
--- a 'MTFB' or 'MTFT'.
+-- a 'MTF'.
 --
 -- To do this, users can use the 'bytestringToBWTToMTFB' and 'bytestringToBWTToMTFT' functions,
 -- as well as the 'textToBWTToMTFB' and 'textToBWTToMTFT' functions.
 --
 -- The base functions for 'ByteString', 'bytestringToMTFB' and 'bytestringToMTFT' can be used to
--- convert a 'Seq' ('Maybe' 'ByteString') to a 'MTFB' and 'MTFT', respectively.
+-- convert a 'Seq' ('Maybe' 'ByteString') to a 'MTF', respectively.
 --
 -- Likewise, the base functions for 'Text', 'textToMTFB' and 'textToMTFT' can be used to
--- convert a 'Seq' ('Maybe' 'Text') to a 'MTFB' and 'MTFT' respectively.
+-- convert a 'Seq' ('Maybe' 'Text') to a 'MTF' respectively.
 --
 -- There are various other lower-level functions for interacting with the MTF implementation on 'ByteString' and 'Text' as well.
 --
@@ -78,99 +78,99 @@ import Test.HUnit
 {-toMTF Function(s)-}
 
 -- | Helper function for converting a 'ByteString'
--- to a 'MTFB' via a 'BWT' first.
+-- to a 'MTF' via a 'BWT' first.
 bytestringToBWTToMTFB :: ByteString ->
-                         MTFB
+                         MTF ByteString
 bytestringToBWTToMTFB = bytestringBWTToMTFB . bytestringToBWT
 
 -- | Helper function for converting a 'ByteString'
--- to a 'MTFT' via a 'BWT' first.
+-- to a 'MTF' via a 'BWT' first.
 bytestringToBWTToMTFT :: ByteString ->
-                         MTFT
+                         MTF Text
 bytestringToBWTToMTFT = bytestringBWTToMTFT . bytestringToBWT
 
 -- | Helper function for converting a 'Text'
--- to a 'MTFB' via a 'BWT' first.
+-- to a 'MTF' via a 'BWT' first.
 textToBWTToMTFB :: Text ->
-                   MTFB
+                   MTF ByteString
 textToBWTToMTFB = textBWTToMTFB . textToBWT
 
 -- | Helper function for converting a 'Text'
--- to a 'MTFT' via a 'BWT' first.
+-- to a 'MTF' via a 'BWT' first.
 textToBWTToMTFT :: Text ->
-                   MTFT
+                   MTF Text
 textToBWTToMTFT = textBWTToMTFT . textToBWT
 
 -- | Take a 'BWT' of 'Word8's and generate the
--- Move-to-front transform ('MTFB').
+-- Move-to-front transform ('MTF').
 textBWTToMTFB :: TextBWT
-              -> MTFB
+              -> MTF ByteString
 textBWTToMTFB xs =
-  MTFB (seqToMTFB xss)
+  MTF (seqToMTF xss)
     where
       xss = fmap (fmap BS.singleton)
             ((\(BWT t) -> t) $
             ((\(TextBWT t) -> t) xs))
 
 -- | Take a 'BWT' of 'Word8's and generate the
--- Move-to-front transform ('MTFB').
+-- Move-to-front transform ('MTF').
 bytestringBWTToMTFB :: BWT Word8
-                    -> MTFB
+                    -> MTF ByteString
 bytestringBWTToMTFB xs =
-  MTFB (seqToMTFB xss)
+  MTF (seqToMTF xss)
     where
       xss = fmap (fmap BS.singleton) ((\(BWT t) -> t) xs)
 
 -- | Take a 'BWT' of 'Word8's and generate the
--- Move-to-front transform ('MTFB').
+-- Move-to-front transform ('MTF').
 textBWTToMTFT :: TextBWT
-              -> MTFT
+              -> MTF Text
 textBWTToMTFT xs =
-  MTFT (seqToMTFT xss)
+  MTF (seqToMTF xss)
     where
       xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
             ((\(BWT t) -> t) $
             ((\(TextBWT t) -> t) xs))
 
 -- | Take a 'BWT' of 'Word8's and generate the
--- Move-to-front transform ('MTFT').
+-- Move-to-front transform ('MTF').
 bytestringBWTToMTFT :: BWT Word8
-                    -> MTFT
+                    -> MTF Text
 bytestringBWTToMTFT xs =
-  MTFT (seqToMTFT xss)
+  MTF (seqToMTF xss)
     where
       xss = fmap (fmap (DTE.decodeUtf8 . BS.singleton))
             ((\(BWT t) -> t) xs)
 
--- | Takes a 'Text' and returns the Move-to-front transform ('MTFB').
+-- | Takes a 'Text' and returns the Move-to-front transform ('MTF').
 textToMTFB :: Seq (Maybe Text)
-           -> MTFB
-textToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
+           -> MTF ByteString
+textToMTFB DS.Empty = MTF (DS.Empty,DS.Empty)
 textToMTFB xs       =
-  MTFB (seqToMTFB xss)
+  MTF (seqToMTF xss)
     where
       xss = fmap (fmap DTE.encodeUtf8) xs
 
--- | Takes a 'Seq' of 'ByteString's and returns the Move-to-front transform ('MTFB').
+-- | Takes a 'Seq' of 'ByteString's and returns the Move-to-front transform ('MTF').
 bytestringToMTFB :: Seq (Maybe ByteString)
-                 -> MTFB
-bytestringToMTFB DS.Empty = MTFB (DS.Empty,DS.Empty)
+                 -> MTF ByteString
+bytestringToMTFB DS.Empty = MTF (DS.Empty,DS.Empty)
 bytestringToMTFB xs       =
- MTFB (seqToMTFB xs)
+ MTF (seqToMTF xs)
 
--- | Takes a 'Text' and returns the Move-to-front transform ('MTFT').
+-- | Takes a 'Text' and returns the Move-to-front transform ('MTF').
 textToMTFT :: Seq (Maybe Text)
-           -> MTFT
-textToMTFT DS.Empty = MTFT (DS.Empty,DS.Empty)
+           -> MTF Text
+textToMTFT DS.Empty = MTF (DS.Empty,DS.Empty)
 textToMTFT xs       =
-  MTFT (seqToMTFT xs)
+  MTF (seqToMTF xs)
 
--- | Takes a 'ByteString' and returns the Move-to-front transform ('MTFT').
+-- | Takes a 'ByteString' and returns the Move-to-front transform ('MTF').
 bytestringToMTFT :: Seq (Maybe ByteString)
-                 -> MTFT
-bytestringToMTFT DS.Empty = MTFT (DS.Empty,DS.Empty)
+                 -> MTF Text
+bytestringToMTFT DS.Empty = MTF (DS.Empty,DS.Empty)
 bytestringToMTFT xs       =
-  MTFT (seqToMTFT xss)
+  MTF (seqToMTF xss)
     where
       xss = fmap (fmap DTE.decodeUtf8) xs
 
@@ -179,107 +179,107 @@ bytestringToMTFT xs       =
 
 {-fromMTF function(s)-}
 
--- | Helper function for converting a 'BWT'ed 'MTFB'
+-- | Helper function for converting a 'BWT'ed 'MTF'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromMTFB :: MTFB
+bytestringFromBWTFromMTFB :: MTF ByteString
                           -> ByteString
 bytestringFromBWTFromMTFB = bytestringFromByteStringBWT . bytestringBWTFromMTFB
 
--- | Helper function for converting a 'BWT'ed 'MTFT'
+-- | Helper function for converting a 'BWT'ed 'MTF'
 -- back to the original 'ByteString'.
-bytestringFromBWTFromMTFT :: MTFT
+bytestringFromBWTFromMTFT :: MTF Text
                           -> ByteString
 bytestringFromBWTFromMTFT xs = bytestringFromByteStringBWT $
                                BWT                         $
                                fmap (fmap DTE.encodeUtf8)  $
                             ((\(BWT t) -> t) (textBWTFromMTFT xs))
 
--- | Helper function for converting a 'BWT'ed 'MTFB'
+-- | Helper function for converting a 'BWT'ed 'MTF'
 -- back to the original 'Text'.
-textFromBWTFromMTFB :: MTFB
+textFromBWTFromMTFB :: MTF ByteString
                     -> Text
 textFromBWTFromMTFB = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromMTFB
 
--- | Helper function for converting a 'BWT'ed 'MTFT'
+-- | Helper function for converting a 'BWT'ed 'MTF'
 -- back to the original 'Text'.
-textFromBWTFromMTFT :: MTFT
+textFromBWTFromMTFT :: MTF Text
                     -> Text
 textFromBWTFromMTFT = DTE.decodeUtf8 . bytestringFromByteStringBWT . bytestringBWTFromMTFT
 
--- | Takes a 'MTFT' and returns
+-- | Takes a 'MTF' and returns
 -- the 'BWT' of 'Text's.
-textBWTFromMTFT :: MTFT
+textBWTFromMTFT :: MTF Text
                 -> BWT Text
-textBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
-textBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
+textBWTFromMTFT (MTF (DS.Empty,_)) = BWT DS.Empty
+textBWTFromMTFT (MTF (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFT xs                  =
-  BWT (seqFromMTFT xs)
+  BWT (seqFromMTF xs)
 
--- | Takes a 'MTFT' and returns
+-- | Takes a 'MTF' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromMTFT :: MTFT
+bytestringBWTFromMTFT :: MTF Text
                       -> BWT ByteString
-bytestringBWTFromMTFT (MTFT (DS.Empty,_)) = BWT DS.Empty
-bytestringBWTFromMTFT (MTFT (_,DS.Empty)) = BWT DS.Empty
+bytestringBWTFromMTFT (MTF (DS.Empty,_)) = BWT DS.Empty
+bytestringBWTFromMTFT (MTF (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFT xs                  = do
-  let originalbwtb = seqFromMTFT xs
+  let originalbwtb = seqFromMTF xs
   BWT (fmap (fmap DTE.encodeUtf8) originalbwtb)
 
--- | Takes a 'MTFB' and returns
+-- | Takes a 'MTF' and returns
 -- the 'BWT' of 'Text's.
-textBWTFromMTFB :: MTFB
+textBWTFromMTFB :: MTF ByteString
                 -> BWT Text
-textBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
-textBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
+textBWTFromMTFB (MTF (DS.Empty,_)) = BWT DS.Empty
+textBWTFromMTFB (MTF (_,DS.Empty)) = BWT DS.Empty
 textBWTFromMTFB xs                  = do
-  let originalbwtt = seqFromMTFB xs
+  let originalbwtt = seqFromMTF xs
   BWT (fmap (fmap DTE.decodeUtf8) originalbwtt)
 
--- | Take a 'MTFB' and returns
+-- | Take a 'MTF' and returns
 -- the 'BWT' of 'ByteString's.
-bytestringBWTFromMTFB :: MTFB
+bytestringBWTFromMTFB :: MTF ByteString
                       -> BWT ByteString
-bytestringBWTFromMTFB (MTFB (DS.Empty,_)) = BWT DS.Empty
-bytestringBWTFromMTFB (MTFB (_,DS.Empty)) = BWT DS.Empty
+bytestringBWTFromMTFB (MTF (DS.Empty,_)) = BWT DS.Empty
+bytestringBWTFromMTFB (MTF (_,DS.Empty)) = BWT DS.Empty
 bytestringBWTFromMTFB xs              =
-  BWT (seqFromMTFB xs)
+  BWT (seqFromMTF xs)
 
--- | Takes a 'MTFB' and returns
+-- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'Text's.
-textFromMTFB :: MTFB
+textFromMTFB :: MTF ByteString
              -> Seq (Maybe Text)
-textFromMTFB (MTFB (DS.Empty,_)) = DS.Empty
-textFromMTFB (MTFB (_,DS.Empty)) = DS.Empty
+textFromMTFB (MTF (DS.Empty,_)) = DS.Empty
+textFromMTFB (MTF (_,DS.Empty)) = DS.Empty
 textFromMTFB xs                  = do
-  let originalt = seqFromMTFB xs
+  let originalt = seqFromMTF xs
   fmap (fmap DTE.decodeUtf8) originalt
 
--- | Takes a 'MTFB' and returns
+-- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'ByteString's.
-bytestringFromMTFB :: MTFB
+bytestringFromMTFB :: MTF ByteString
                    -> Seq (Maybe ByteString)
-bytestringFromMTFB (MTFB (DS.Empty,_)) = DS.Empty
-bytestringFromMTFB (MTFB (_,DS.Empty)) = DS.Empty
+bytestringFromMTFB (MTF (DS.Empty,_)) = DS.Empty
+bytestringFromMTFB (MTF (_,DS.Empty)) = DS.Empty
 bytestringFromMTFB xs                  =
-  seqFromMTFB xs
+  seqFromMTF xs
 
--- | Takes a 'MTFT' and returns
+-- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'Text's.
-textFromMTFT :: MTFT
+textFromMTFT :: MTF Text
              -> Seq (Maybe Text)
-textFromMTFT (MTFT (DS.Empty,_)) = DS.Empty
-textFromMTFT (MTFT (_,DS.Empty)) = DS.Empty
+textFromMTFT (MTF (DS.Empty,_)) = DS.Empty
+textFromMTFT (MTF (_,DS.Empty)) = DS.Empty
 textFromMTFT xs                  =
-  seqFromMTFT xs
+  seqFromMTF xs
 
--- | Takes a 'MTFT' and returns
+-- | Takes a 'MTF' and returns
 -- the original 'Seq' of 'ByteString's.
-bytestringFromMTFT :: MTFT
+bytestringFromMTFT :: MTF Text
                    -> Seq (Maybe ByteString)
-bytestringFromMTFT (MTFT (DS.Empty,_)) = DS.Empty
-bytestringFromMTFT (MTFT (_,DS.Empty)) = DS.Empty
+bytestringFromMTFT (MTF (DS.Empty,_)) = DS.Empty
+bytestringFromMTFT (MTF (_,DS.Empty)) = DS.Empty
 bytestringFromMTFT xs                  = do
-  let originalb = seqFromMTFT xs
+  let originalb = seqFromMTF xs
   fmap (fmap DTE.encodeUtf8) originalb
 
 {---------------------}
@@ -288,12 +288,12 @@ tests :: Test
 tests =
   TestList
   [ TestCase (assertEqual "test 1"
-               (MTFB ([3,1,2,0,0,3,0,3,0,1],
+               (MTF ([3,1,2,0,0,3,0,3,0,1],
                       [Just "b",Just "c",Just "a",Nothing]))
                (textToBWTToMTFB "aaabbbccc"))
   , TestCase (assertEqual "test 2"
                "aaabbbccc"
                (textFromBWTFromMTFB
-                 (MTFB ([3,1,2,0,0,3,0,3,0,1],
+                 (MTF ([3,1,2,0,0,3,0,3,0,1],
                         [Just "b",Just "c",Just "a",Nothing]))))
   ]
